@@ -522,9 +522,286 @@ restored-src/src/
 
 ---
 
-## 8. 关联文档
+## 8. 安全架构全景
 
+### 8.1 安全分层模型
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  第 1 层: 工具池组装安全 (编译时)                                  │
+│  filterToolsByDenyRules() → 不可见的工具无法被模型调用              │
+├────────────────────────────────────────────────────────────────┤
+│  第 2 层: 权限模式 (运行时)                                       │
+│  default/plan/acceptEdits/bypassPermissions/dontAsk/auto       │
+├────────────────────────────────────────────────────────────────┤
+│  第 3 层: Bash 安全分类 (23+ 检测器)                              │
+│  静态模式匹配 → 命令注入/变量注入/编码绕过/Zsh 内建检测              │
+├────────────────────────────────────────────────────────────────┤
+│  第 4 层: 权限规则引擎 (分层优先级)                                │
+│  policy > user > project > local > flag > command > session     │
+├────────────────────────────────────────────────────────────────┤
+│  第 5 层: Pre/PostToolUse 钩子                                   │
+│  外部脚本可拦截/修改/阻止工具调用                                  │
+├────────────────────────────────────────────────────────────────┤
+│  第 6 层: 安全检查 (bypass 免疫)                                  │
+│  即使 bypassPermissions 模式也不跳过的检查                         │
+├────────────────────────────────────────────────────────────────┤
+│  第 7 层: 文件系统约束                                            │
+│  trustedDirectories / 路径验证 / 只读模式                         │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 Bash 命令安全检测
+
+**23+ 危险模式检测器**覆盖：
+
+| 类别 | 检测内容 | 示例 |
+|------|---------|------|
+| 命令注入 | `$()`, `` `` ``, `<()` | `$(rm -rf /)` |
+| 变量注入 | `$IFS`, `$SHELL` 修改 | `IFS=/ cmd` |
+| 重定向攻击 | 输入/输出重定向 | `> /etc/hosts` |
+| 编码绕过 | UTF-8/Unicode 空白 | 非 ASCII 空白字符 |
+| Zsh 内建 | `zmodload`, `sysopen` 等 | `zmodload zsh/system` |
+| 引号逃逸 | 未闭合引号/注释反同步 | `echo "cmd; #` |
+| 大括号展开 | `{a,b,c}` 模式 | `rm {/,/etc}` |
+| 控制字符 | NUL, STX 等 | `\x00` 注入 |
+
+### 8.3 跨组件安全机制
+
+| 组件 | 安全机制 |
+|------|---------|
+| **MCP** | 通道权限控制 + OAuth PKCE + 锁文件并发保护 |
+| **Bridge** | 双 Token JWT + 可信设备认证 + 权限远程审批 |
+| **Plugin** | 市场信任源 + 安装审批 |
+| **团队记忆** | 上传前秘密扫描 + 文件大小限制 |
+| **OAuth** | PKCE 流程 + 安全存储 (Keychain) + Token 刷新 |
+
+---
+
+## 9. 错误处理与容错架构
+
+### 9.1 错误处理策略矩阵
+
+```
+API 错误
+  ├── 429 Rate Limit → 等待 retry-after → 指数退避重试 (10次)
+  ├── 529 Overload → 有限重试 (3次) + fallback 模型切换
+  ├── 400 prompt-too-long → 响应式压缩 → 重试
+  ├── 401/403 Auth → 刷新 OAuth token → 重试
+  ├── ECONNRESET/EPIPE → 立即重试 (陈旧连接)
+  └── max_output_tokens → 恢复循环 (最多 3次)
+
+工具错误
+  ├── 输入验证失败 → deny + 错误消息
+  ├── 权限拒绝 → 记录到 permissionDenials
+  ├── 执行超时 → AbortController 取消
+  └── 运行时异常 → is_error ToolResult
+
+压缩错误
+  ├── 连续失败 < 3 → 重试
+  ├── 连续失败 ≥ 3 → 熔断器停止
+  └── 响应式压缩 → 单次尝试
+```
+
+### 9.2 熔断器设计
+
+| 熔断器 | 阈值 | 触发后行为 |
+|-------|------|----------|
+| 自动压缩 | 3 次连续失败 | 停止自动压缩 |
+| Token 刷新 | 3 次连续失败 | 停止调度刷新 |
+| Fast Mode | 指数退避 | 降级为标准模式 |
+| 529 Overload | 3 次前台 | 产出用户提示 + 继续重试 |
+| max_output_tokens | 3 次恢复 | 放弃恢复 |
+
+### 9.3 Fallback 模型链
+
+```
+主模型 (如 Claude Opus)
+  └── 连续 overload → FallbackTriggeredError
+        └── 备用模型 (如 Claude Sonnet)
+              └── 继续 overload → 传播错误到用户
+```
+
+---
+
+## 10. 性能优化架构
+
+### 10.1 启动优化
+
+| 策略 | 实现 | 效果 |
+|------|------|------|
+| **快速路径** | cli.tsx 三级分流 | `--version` 毫秒返回 |
+| **并行初始化** | `Promise.all([mdm, keychain])` | 减少串行等待 |
+| **异步后台** | `void loadRemoteSettings()` | 不阻塞启动 |
+| **动态 import** | `await import(...)` | 按需加载模块 |
+| **Feature Gate** | `bun:bundle` 死代码消除 | 减小包体积 |
+
+### 10.2 Prompt Cache 稳定性
+
+```
+内置工具 (排序) → MCP 工具 (排序) → 去重
+  │                    │
+  └── 稳定前缀 ────────┘  ← cache key 不因 MCP 增减而变
+```
+
+### 10.3 投机执行 (Speculation)
+
+```
+用户输入中...
+  │ 预测完整提示
+  │ 提前启动 API 调用
+  ▼
+  ├── 预测正确 → 直接使用结果 (节省等待)
+  ├── 预测错误 → abort() → 重新请求
+  └── 追踪已写路径 (writtenPathsRef)
+```
+
+### 10.4 工具执行优化
+
+| 策略 | 实现 |
+|------|------|
+| **流式工具执行** | StreamingToolExecutor: API 流未结束即开始权限检查 |
+| **并行安全工具** | isConcurrencySafe() 标记的工具并行执行 |
+| **ToolSearch 延迟** | shouldDefer 工具不注入完整描述，减少 token |
+| **文件 COW 缓存** | readFileState 避免重复读取 |
+
+### 10.5 懒加载策略
+
+| 资源 | 懒加载条件 | 节省 |
+|------|----------|------|
+| 语音原生模块 | 首次语音按键 | 启动不阻塞 |
+| Bedrock SDK | 首次 token 计数 | ~279KB |
+| LSP 服务器 | 首次文件访问 | 进程资源 |
+| MCP 连接 | 首次工具调用 | 网络连接 |
+
+---
+
+## 11. 数据持久化架构
+
+### 11.1 持久化层次
+
+```
+运行时状态 (内存)
+  │
+  ├── AppState (React Context)
+  │     └── 会话内可变状态
+  │
+  ├── 设置 (~/.claude/)
+  │     ├── settings.json       → 用户配置
+  │     ├── settings.local.json → 本地覆盖
+  │     └── credentials         → 认证凭证
+  │
+  ├── 项目级 (.claude/)
+  │     ├── settings.json       → 项目配置
+  │     ├── CLAUDE.md           → 项目记忆
+  │     ├── memory/*.md         → 自动记忆
+  │     ├── agents/*.yaml       → 自定义智能体
+  │     └── skills/*.md         → 自定义技能
+  │
+  ├── 会话历史 (transcript)
+  │     └── 可恢复的会话数据
+  │
+  └── 远程同步
+        ├── remoteManagedSettings → 组织设置 (ETag 缓存)
+        ├── policyLimits         → 策略限制 (ETag 缓存)
+        ├── teamMemorySync       → 团队记忆 (内容哈希)
+        └── settingsSync         → 设置同步 (双向)
+```
+
+### 11.2 迁移系统
+
+```
+migrations/ 目录
+  ├── 版本化迁移脚本
+  ├── 顺序执行保证
+  └── 在 init() 阶段运行
+```
+
+---
+
+## 12. 可观测性架构
+
+### 12.1 三层可观测性
+
+```
+应用层
+  ├── Analytics (零依赖核心)
+  │     ├── logEvent() → 事件队列 → sink 路由
+  │     ├── Datadog (去 PII 投递)
+  │     └── 1P 日志 (含 PII proto 字段)
+  │
+  ├── GrowthBook
+  │     ├── 特性标志管理
+  │     ├── A/B 测试分组
+  │     └── 动态配置
+  │
+  └── OpenTelemetry (延迟加载)
+        └── 追踪/指标/日志
+
+运行时层
+  ├── diagnosticTracking → IDE 诊断
+  ├── startupProfiler → 启动性能
+  └── FPS 监控 → 渲染性能
+
+安全层
+  ├── 权限决策审计 (DecisionReason)
+  ├── Bash 安全检查日志
+  └── 内部基础设施日志 (Kubernetes/Container)
+```
+
+### 12.2 隐私保护设计
+
+```
+事件元数据
+  ├── 普通元数据 → Datadog + 1P
+  ├── _PROTO_* 字段 → 仅 1P (PII 标记)
+  └── 编译期标记类型 → 强制分类
+```
+
+---
+
+## 13. 部署模式全景
+
+### 13.1 安装与运行
+
+```
+安装方式
+  ├── npm install -g @anthropic-ai/claude-code
+  ├── npx @anthropic-ai/claude-code
+  └── IDE 扩展集成 (VS Code)
+
+运行模式
+  ├── 交互式 REPL      → claude
+  ├── 非交互打印        → claude -p "query"
+  ├── 管道输入          → echo "query" | claude
+  ├── SDK 嵌入          → import { query } from '@anthropic-ai/claude-code'
+  ├── MCP 服务器         → claude --claude-in-chrome-mcp
+  ├── Bridge 远程        → claude.ai ↔ 本地 Agent
+  ├── Daemon 后台        → 持久化服务
+  ├── KAIROS 助手        → 计划任务 + 主动建议
+  └── Voice 语音         → 推送讲话交互
+```
+
+### 13.2 企业部署支持
+
+| 特性 | 实现 |
+|------|------|
+| **代理支持** | HTTP/HTTPS 代理配置 |
+| **自定义 TLS** | MTLS 双向证书 |
+| **MDM 管理** | ensureMdmSettingsLoaded() |
+| **组织策略** | policyLimits (Team/Enterprise) |
+| **远程设置** | remoteManagedSettings |
+| **多供应商 API** | Bedrock / Foundry / Vertex |
+
+---
+
+## 14. 关联文档
+
+- [核心流程源码级分析](./CORE_FLOW_ANALYSIS.md) — 启动到响应的完整链路追踪
+- [服务层关键分析](./SERVICES_ANALYSIS.md) — 21+ 服务模块深度分析
 - [模块详细设计](./MODULES.md) — 按文件夹逐一分析每个模块
 - [命令详述](./COMMANDS.md) — 86+ 命令逐一详述 + 分类汇总
 - [工具详述](./TOOLS.md) — 43+ 工具逐一详述 + 分类汇总
 - [Agent 设计](./AGENT_DESIGN.md) — 智能体架构、多智能体协调、生命周期
+- [框架设计深度解读](./DESIGN_DEEP_DIVE.md) — 设计哲学与工程权衡
+- [Agent 设计深度解读](./AGENT_DESIGN_DEEP_DIVE.md) — 多智能体设计精髓
