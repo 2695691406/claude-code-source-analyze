@@ -280,12 +280,6 @@ type Command = {
 - **类型**：`local`
 - **行为**：清除 OAuth Token 和认证状态
 
-#### `/oauth-refresh`
-- **功能**：刷新 OAuth Token
-- **类型**：`local`
-- **标记**：内部命令
-- **行为**：手动触发 Token 刷新
-
 ---
 
 ### 6. 订阅与限额
@@ -562,6 +556,10 @@ type Command = {
 #### `/mock-limits`
 - **功能**：模拟速率限制
 - **用途**：限速功能测试
+
+#### `/oauth-refresh`
+- **功能**：刷新 OAuth Token
+- **行为**：手动触发 Token 刷新
 
 #### `/perf-issue`
 - **功能**：性能问题追踪

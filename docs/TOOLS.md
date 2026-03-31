@@ -298,15 +298,42 @@ ToolResultBlock 返回给 API 循环
 |------|-----|
 | **名称** | `PowerShell` |
 | **功能** | Windows PowerShell 命令执行 |
-| **限制** | 仅 Windows 平台 |
+| **只读** | ❌ 否 |
+| **并发安全** | ✅ 是 |
+| **限制** | 仅 Windows 平台可用 |
+
+**输入参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `command` | string | ✅ | PowerShell 命令 |
+| `description` | string | ❌ | 命令描述 |
+
+**行为说明**：
+- 与 BashTool 类似但使用 PowerShell 引擎
+- 仅在 Windows 平台自动注册
+- 同样受权限系统和危险命令检测控制
 
 ### REPL (REPLTool)
 
 | 属性 | 值 |
 |------|-----|
 | **名称** | `REPL` |
-| **功能** | 交互式 VM 环境 (JavaScript) |
+| **目录** | `tools/REPLTool/` |
+| **功能** | 交互式 JavaScript VM 环境 |
+| **只读** | ❌ 否 |
+| **并发安全** | ❌ 否 |
 | **限制** | 特性门控: ant/PROACTIVE/KAIROS |
+
+**输入参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `code` | string | ✅ | 要执行的 JavaScript 代码 |
+
+**行为说明**：
+- 在隔离的 VM 沙箱中执行 JavaScript
+- 支持持久化状态（跨调用保留变量）
+- 适用于快速计算、数据转换等场景
+- 需要特性门控启用
 
 ---
 

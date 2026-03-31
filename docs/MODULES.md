@@ -125,7 +125,7 @@
 
 | 文件 | LOC | 职责 |
 |------|-----|------|
-| `cli.tsx` | 39,275 | CLI 主逻辑：进程环境设置、版本快速路径、Daemon Worker 路径、配置初始化、优雅关闭 |
+| `cli.tsx` | ~39,275 | CLI 主逻辑（因源码映射还原为单文件，实际为多模块合并）：进程环境设置、版本快速路径、Daemon Worker 路径、配置初始化、优雅关闭 |
 | `init.ts` | 13,780 | 核心初始化：配置加载、信任对话、MDM 预取、OAuth/API Key 认证、策略限制、遥测、GrowthBook |
 | `agentSdkTypes.ts` | — | SDK 类型定义：SDKMessage、Query 接口、控制类型、计划任务 |
 | `mcp.ts` | — | MCP 协议入口集成 |
