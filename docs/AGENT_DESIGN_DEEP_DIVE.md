@@ -95,7 +95,7 @@ const contextMessages = forkContextMessages
 [
   ...history,                          // 相同
   assistant(all_tool_uses, thinking),   // 相同
-  user(placeholder_results, directive)  // 仅最后的 directive 不同
+  user(placeholder_result_1, ..., directive)  // 仅最后的 directive 不同
 ]
 ```
 
