@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深度分析报告 — Claude Code v2.1.88 源码分析</title>
+<style>
+/* ========== CSS Variables / Theme ========== */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--accent-cyan);
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* ========== Particle Background ========== */
+.particle-bg {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  border-radius: 50%; background: var(--accent-blue);
+  opacity: 0; animation: particleFloat linear infinite;
+}
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+/* ========== Top Navigation ========== */
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue);
+  padding: 6px 14px;
+  background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 20px;
+  transition: all var(--transition);
+}
+.top-nav .back-link:hover {
+  background: rgba(88,166,255,0.15);
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+}
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title {
+  font-size: 0.9rem; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ========== Sidebar TOC ========== */
+.sidebar {
+  position: fixed; top: 56px; left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - 56px);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50;
+  padding: 24px 0;
+  transform: translateX(0);
+  transition: transform var(--transition);
+}
+.sidebar-title {
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 0 20px;
+  margin-bottom: 12px;
+}
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 20px; font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-left: 3px solid transparent;
+  transition: all var(--transition);
+}
+.sidebar-nav a:hover {
+  color: var(--text-primary);
+  background: rgba(88,166,255,0.05);
+  border-left-color: rgba(88,166,255,0.3);
+}
+.sidebar-nav a.active {
+  color: var(--accent-blue);
+  background: rgba(88,166,255,0.08);
+  border-left-color: var(--accent-blue);
+  font-weight: 600;
+}
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-tertiary); font-size: 0.7rem;
+  font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num {
+  background: rgba(88,166,255,0.15);
+  color: var(--accent-blue);
+}
+.sidebar-toggle {
+  display: none;
+  position: fixed; top: 62px; left: 12px;
+  z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--text-secondary); font-size: 1.1rem;
+  align-items: center; justify-content: center;
+}
+
+/* ========== Main Content ========== */
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: 56px;
+  padding: 0;
+  position: relative; z-index: 1;
+  min-height: calc(100vh - 56px);
+}
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ========== Header ========== */
+.page-header {
+  padding: 60px 0 40px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.page-header::before {
+  content: ''; position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow {
+  0%   { transform: translate(-5%, -5%) scale(1); }
+  100% { transform: translate(5%, 5%) scale(1.1); }
+}
+.page-header .badge {
+  display: inline-block; padding: 5px 14px;
+  background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle {
+  font-size: 1rem; color: var(--text-secondary);
+  max-width: 600px; margin: 0 auto;
+}
+.header-line {
+  width: 60px; height: 3px;
+  background: var(--gradient-primary);
+  margin: 24px auto 0; border-radius: 2px;
+}
+
+/* ========== Section ========== */
+.content-section {
+  padding: 56px 0 20px;
+  scroll-margin-top: 80px;
+}
+.section-title {
+  margin-bottom: 36px;
+}
+.section-title h2 {
+  font-size: 1.6rem; font-weight: 700;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+}
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p {
+  color: var(--text-secondary); font-size: 0.95rem;
+  margin-left: 52px;
+}
+
+/* ========== Fade In ========== */
+.fade-section {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.fade-section.visible {
+  opacity: 1; transform: translateY(0);
+}
+
+/* ========== Footer ========== */
+.footer {
+  padding: 48px 0; text-align: center;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer p {
+  color: var(--text-muted); font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.footer .footer-brand {
+  font-weight: 600;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========== Metric Grid ========== */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+.metric-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 24px 16px;
+  text-align: center; transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.metric-card:hover { border-color: var(--border-highlight); transform: translateY(-3px); box-shadow: var(--glow-blue); }
+.metric-icon { font-size: 1.8rem; margin-bottom: 8px; display: block; }
+.metric-value { font-size: 1.8rem; font-weight: 800; color: var(--accent-blue); margin-bottom: 4px; }
+.metric-label { font-size: 0.85rem; color: var(--text-secondary); }
+
+/* ========== Service Cards ========== */
+.service-cards { display: flex; flex-direction: column; gap: 16px; }
+.service-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 22px 24px;
+  transition: all var(--transition); position: relative; overflow: hidden;
+}
+.service-card::before {
+  content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.service-card:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.service-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.service-tag { font-size: 0.72rem; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: var(--bg-tertiary); color: var(--text-muted); margin-left: auto; }
+.service-list { list-style: none; margin: 0; padding: 0; }
+.service-list li {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 5px 0; font-size: 0.88rem; color: var(--text-secondary);
+  border-bottom: 1px solid rgba(48,54,61,0.3);
+}
+.service-list li:last-child { border-bottom: none; }
+.service-list .s-dot { color: var(--accent-blue); flex-shrink: 0; margin-top: 2px; }
+.service-card:nth-child(1)::before { background: var(--accent-blue); }
+.service-card:nth-child(2)::before { background: var(--accent-purple); }
+.service-card:nth-child(3)::before { background: var(--accent-green); }
+.service-card:nth-child(4)::before { background: var(--accent-cyan); }
+.service-card:nth-child(5)::before { background: var(--accent-orange); }
+.service-card:nth-child(6)::before { background: var(--accent-pink); }
+.service-card:nth-child(7)::before { background: var(--accent-yellow); }
+.service-card:nth-child(8)::before { background: var(--accent-red); }
+.service-card:nth-child(9)::before { background: var(--accent-blue); }
+.service-card:nth-child(10)::before { background: var(--accent-purple); }
+.service-card:nth-child(11)::before { background: var(--accent-green); }
+
+/* ========== Pattern Table ========== */
+.pattern-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.pattern-table th {
+  background: var(--bg-secondary); padding: 14px 16px;
+  font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-muted); text-align: left;
+  border-bottom: 2px solid var(--border-color);
+}
+.pattern-table td {
+  padding: 12px 16px; font-size: 0.88rem;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  color: var(--text-secondary);
+}
+.pattern-table tr:last-child td { border-bottom: none; }
+.pattern-table tr:hover td { background: rgba(88,166,255,0.03); }
+.pattern-table .p-name { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.pattern-table .p-stars { color: var(--accent-yellow); white-space: nowrap; }
+
+/* ========== Advantage Cards ========== */
+.advantage-cards { display: flex; flex-direction: column; gap: 16px; }
+.advantage-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 22px 24px;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: all var(--transition); position: relative; overflow: hidden;
+}
+.advantage-card::before {
+  content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px; background: var(--accent-green);
+}
+.advantage-card:hover { border-color: var(--border-highlight); transform: translateX(4px); box-shadow: var(--glow-green); }
+.adv-num {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
+  background: rgba(126,231,135,0.1); color: var(--accent-green);
+}
+.adv-info { flex: 1; min-width: 0; }
+.adv-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+.adv-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7; }
+
+/* ========== Issue Cards ========== */
+.issue-cards { display: flex; flex-direction: column; gap: 16px; }
+.issue-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 22px 24px;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: all var(--transition); position: relative; overflow: hidden;
+}
+.issue-card::before {
+  content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px; background: var(--accent-orange);
+}
+.issue-card:hover { border-color: var(--accent-orange); transform: translateX(4px); box-shadow: 0 0 20px rgba(240,136,62,0.15); }
+.issue-num {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
+  background: rgba(240,136,62,0.1); color: var(--accent-orange);
+}
+.issue-info { flex: 1; min-width: 0; }
+.issue-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+.issue-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7; }
+
+/* ========== Compare Table ========== */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.compare-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); overflow: hidden;
+  min-width: 640px;
+}
+.compare-table th {
+  background: var(--bg-secondary); padding: 14px 12px;
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted); text-align: center;
+  border-bottom: 2px solid var(--border-color);
+}
+.compare-table th:first-child { text-align: left; }
+.compare-table td {
+  padding: 11px 12px; font-size: 0.85rem;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  color: var(--text-secondary); text-align: center;
+}
+.compare-table td:first-child { text-align: left; font-weight: 600; color: var(--text-primary); }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: rgba(88,166,255,0.03); }
+.compare-table .stars { color: var(--accent-yellow); white-space: nowrap; font-size: 0.8rem; }
+
+/* ========== Decision Cards ========== */
+.decision-cards { display: flex; flex-direction: column; gap: 20px; }
+.decision-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); padding: 28px;
+  position: relative; overflow: hidden; transition: all var(--transition);
+}
+.decision-card::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+}
+.decision-card:nth-child(1)::before { background: var(--gradient-primary); }
+.decision-card:nth-child(2)::before { background: var(--gradient-green); }
+.decision-card:nth-child(3)::before { background: var(--gradient-warm); }
+.decision-card:nth-child(4)::before { background: var(--gradient-cyan); }
+.decision-card:nth-child(5)::before { background: var(--gradient-pink); }
+.decision-card:hover { border-color: var(--border-highlight); transform: translateY(-2px); box-shadow: var(--glow-blue); }
+.decision-q { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.decision-q .q-icon { font-size: 1.3rem; }
+.decision-a { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; }
+
+/* ========== Suggestion Cards ========== */
+.suggestion-cards { display: flex; flex-direction: column; gap: 14px; }
+.suggestion-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 18px 22px;
+  display: flex; align-items: flex-start; gap: 14px;
+  transition: all var(--transition);
+}
+.suggestion-card:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.sug-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+  background: rgba(245,213,71,0.1); color: var(--accent-yellow);
+}
+.sug-info { flex: 1; }
+.sug-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+.sug-desc { font-size: 0.85rem; color: var(--text-secondary); }
+
+/* ========== Radar / Score ========== */
+.radar-wrapper {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); padding: 32px;
+  margin-bottom: 24px;
+}
+.radar-chart {
+  width: 300px; height: 300px; margin: 0 auto 24px;
+  position: relative;
+}
+.radar-labels {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+}
+.radar-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.85rem; color: var(--text-secondary);
+}
+.radar-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-blue);
+}
+.radar-score { font-weight: 700; color: var(--accent-blue); }
+.score-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.score-row { display: flex; align-items: center; gap: 12px; }
+.score-label { width: 90px; font-size: 0.85rem; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+.score-bar { flex: 1; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 4px; background: var(--gradient-primary); transition: width 1s ease; }
+.score-val { width: 50px; font-size: 0.85rem; font-weight: 700; color: var(--accent-blue); }
+
+.overall-score {
+  text-align: center; padding: 32px;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg); margin-bottom: 24px;
+}
+.overall-number {
+  font-size: 4rem; font-weight: 900;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1; display: inline;
+}
+.overall-sub { font-size: 1.5rem; font-weight: 700; color: var(--text-muted); }
+.overall-label { font-size: 1rem; color: var(--text-secondary); margin-top: 8px; }
+.overall-badge {
+  display: inline-block; margin-top: 16px;
+  padding: 6px 20px; border-radius: 20px;
+  background: rgba(126,231,135,0.1); border: 1px solid rgba(126,231,135,0.3);
+  color: var(--accent-green); font-size: 0.85rem; font-weight: 600;
+}
+.verdict-card {
+  position: relative; padding: 3px; border-radius: var(--radius-lg);
+  background: var(--gradient-primary);
+}
+.verdict-inner {
+  background: var(--bg-card); border-radius: calc(var(--radius-lg) - 2px);
+  padding: 32px; text-align: center;
+}
+.verdict-text {
+  font-size: 1rem; color: var(--text-secondary); line-height: 1.8;
+  max-width: 700px; margin: 0 auto;
+}
+.verdict-text strong { color: var(--text-primary); }
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .top-nav .page-title { display: none; }
+  .radar-chart { width: 240px; height: 240px; }
+}
+@media (max-width: 480px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Particle Background -->
+<div class="particle-bg">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<!-- Top Navigation -->
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 1.06L4.81 7h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"/></svg>
+    返回首页
+  </a>
+  <span class="page-title">深度分析报告 — Claude Code v2.1.88 源码分析</span>
+</nav>
+
+<!-- Sidebar Toggle -->
+<button class="sidebar-toggle" id="sidebarToggle">☰</button>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-metrics"><span class="toc-num">1</span>工程规模概览</a></li>
+    <li><a href="#sec-services"><span class="toc-num">2</span>核心服务层深度分析</a></li>
+    <li><a href="#sec-patterns"><span class="toc-num">3</span>12+设计模式总评</a></li>
+    <li><a href="#sec-pros"><span class="toc-num">4</span>架构优势深度分析</a></li>
+    <li><a href="#sec-cons"><span class="toc-num">5</span>架构问题深度分析</a></li>
+    <li><a href="#sec-compare"><span class="toc-num">6</span>与主流框架对比</a></li>
+    <li><a href="#sec-decisions"><span class="toc-num">7</span>关键设计决策分析</a></li>
+    <li><a href="#sec-future"><span class="toc-num">8</span>架构演进建议</a></li>
+    <li><a href="#sec-score"><span class="toc-num">9</span>总结评分</a></li>
+  </ul>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content">
+  <div class="container">
+
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="badge">DEEP ANALYSIS REPORT</div>
+      <h1>深度分析报告</h1>
+      <p class="subtitle">Claude Code v2.1.88 源码架构的全面深度分析与质量评估</p>
+      <div class="header-line"></div>
+    </header>
+
+    <!-- Section 1: 工程规模概览 -->
+    <section id="sec-metrics" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue)">📊</span>工程规模概览</h2>
+        <p>Claude Code v2.1.88 的完整工程规模量化指标</p>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card"><span class="metric-icon">📄</span><div class="metric-value">4,756</div><div class="metric-label">总源文件</div></div>
+        <div class="metric-card"><span class="metric-icon">📝</span><div class="metric-value">205,487</div><div class="metric-label">总代码行</div></div>
+        <div class="metric-card"><span class="metric-icon">🔧</span><div class="metric-value">43+</div><div class="metric-label">内置工具</div></div>
+        <div class="metric-card"><span class="metric-icon">⌨️</span><div class="metric-value">86+</div><div class="metric-label">CLI命令</div></div>
+        <div class="metric-card"><span class="metric-icon">⚙️</span><div class="metric-value">21+</div><div class="metric-label">核心服务</div></div>
+        <div class="metric-card"><span class="metric-icon">🔀</span><div class="metric-value">8</div><div class="metric-label">运行模式</div></div>
+        <div class="metric-card"><span class="metric-icon">⚛️</span><div class="metric-value">80+</div><div class="metric-label">React组件</div></div>
+        <div class="metric-card"><span class="metric-icon">🪝</span><div class="metric-value">80+</div><div class="metric-label">React Hooks</div></div>
+        <div class="metric-card"><span class="metric-icon">🚩</span><div class="metric-value">20+</div><div class="metric-label">Feature Flags</div></div>
+        <div class="metric-card"><span class="metric-icon">🔌</span><div class="metric-value">30+</div><div class="metric-label">MCP服务文件</div></div>
+        <div class="metric-card"><span class="metric-icon">🏗️</span><div class="metric-value">12+</div><div class="metric-label">设计模式</div></div>
+      </div>
+    </section>
+
+    <!-- Section 2: 核心服务层深度分析 -->
+    <section id="sec-services" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple)">⚙️</span>核心服务层深度分析</h2>
+        <p>21+ 核心服务的架构设计与实现细节</p>
+      </div>
+      <div class="service-cards">
+        <!-- Service 1 -->
+        <div class="service-card">
+          <div class="service-name">🌐 API调用服务<span class="service-tag">Multi-Provider</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>多供应商抽象层: Anthropic / AWS Bedrock / Google Vertex</li>
+            <li><span class="s-dot">▸</span>Bedrock SDK懒加载（节省279KB启动开销）</li>
+            <li><span class="s-dot">▸</span>自动Token刷新 + 3次熔断器</li>
+            <li><span class="s-dot">▸</span>流式响应处理（AsyncGenerator管道）</li>
+          </ul>
+        </div>
+        <!-- Service 2 -->
+        <div class="service-card">
+          <div class="service-name">🔗 MCP协议服务<span class="service-tag">30+文件</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>5种传输: stdio, SSE, WebSocket, InProcess, SDK HTTP</li>
+            <li><span class="s-dot">▸</span>MCPConnectionManager: React Context管理生命周期</li>
+            <li><span class="s-dot">▸</span>Schema双向转换: MCP ↔ Claude Tool</li>
+            <li><span class="s-dot">▸</span>OAuth/PKCE认证 + 并发保护 + 锁文件</li>
+            <li><span class="s-dot">▸</span>跨Agent MCP共享</li>
+          </ul>
+        </div>
+        <!-- Service 3 -->
+        <div class="service-card">
+          <div class="service-name">🔐 OAuth服务<span class="service-tag">PKCE Flow</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>PKCE流程: codeVerifier → codeChallenge → 授权码交换</li>
+            <li><span class="s-dot">▸</span>Token自动刷新 + 3次熔断器</li>
+            <li><span class="s-dot">▸</span>并发锁保护（多进程安全）</li>
+            <li><span class="s-dot">▸</span>缓存文件持久化</li>
+          </ul>
+        </div>
+        <!-- Service 4 -->
+        <div class="service-card">
+          <div class="service-name">📦 上下文压缩服务<span class="service-tag">5-Level</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>compact: 分叉子Agent生成摘要</li>
+            <li><span class="s-dot">▸</span>microcompact: 按工具类型时间窗口清理</li>
+            <li><span class="s-dot">▸</span>contextCollapse: 读时投影延迟物化</li>
+            <li><span class="s-dot">▸</span>autoCompact: Token阈值自动触发（3次失败熔断）</li>
+          </ul>
+        </div>
+        <!-- Service 5 -->
+        <div class="service-card">
+          <div class="service-name">🧠 记忆服务<span class="service-tag">Auto Dream</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>extractMemories: 会话结束提取关键记忆</li>
+            <li><span class="s-dot">▸</span>autoDream: 三门控（时间门 → 会话门 → 文件锁）</li>
+            <li><span class="s-dot">▸</span>sessionMemory: 10次工具调用后初始化, 每5次更新</li>
+          </ul>
+        </div>
+        <!-- Service 6 -->
+        <div class="service-card">
+          <div class="service-name">📊 Analytics服务<span class="service-tag">Zero Import</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>零导入依赖（防循环导入）</li>
+            <li><span class="s-dot">▸</span>双轨投递: Datadog（去PII）+ 1P日志（含PII）</li>
+            <li><span class="s-dot">▸</span>编译期安全: 标记类型强制元数据分类</li>
+          </ul>
+        </div>
+        <!-- Service 7 -->
+        <div class="service-card">
+          <div class="service-name">🧩 插件服务<span class="service-tag">Hot Reload</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>非阻塞启动安装</li>
+            <li><span class="s-dot">▸</span>差异对账（仅安装缺失/变更）</li>
+            <li><span class="s-dot">▸</span>热重载支持</li>
+          </ul>
+        </div>
+        <!-- Service 8 -->
+        <div class="service-card">
+          <div class="service-name">🎤 语音服务<span class="service-tag">Lazy Load</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>原生模块首选（CoreAudio/ALSA）</li>
+            <li><span class="s-dot">▸</span>降级方案（SoX/arecord）</li>
+            <li><span class="s-dot">▸</span>懒加载（首次语音按键时才加载）</li>
+            <li><span class="s-dot">▸</span>16kHz采样率, 2秒静音检测</li>
+          </ul>
+        </div>
+        <!-- Service 9 -->
+        <div class="service-card">
+          <div class="service-name">☁️ 远程管理配置<span class="service-tag">ETag Cache</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>ETag缓存 + 304优化</li>
+            <li><span class="s-dot">▸</span>Fail-open（获取失败不影响运行）</li>
+            <li><span class="s-dot">▸</span>后台轮询刷新</li>
+          </ul>
+        </div>
+        <!-- Service 10 -->
+        <div class="service-card">
+          <div class="service-name">👥 团队记忆同步<span class="service-tag">Bi-Sync</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>双向同步（服务端赢策略）</li>
+            <li><span class="s-dot">▸</span>秘密扫描（阻止凭证泄露）</li>
+            <li><span class="s-dot">▸</span>文件监控触发push</li>
+            <li><span class="s-dot">▸</span>250KB文件大小限制</li>
+          </ul>
+        </div>
+        <!-- Service 11 -->
+        <div class="service-card">
+          <div class="service-name">🔨 工具执行编排<span class="service-tag">Streaming</span></div>
+          <ul class="service-list">
+            <li><span class="s-dot">▸</span>StreamingToolExecutor: 流式到达即开始权限检查</li>
+            <li><span class="s-dot">▸</span>并发安全工具并行执行, 非并发安全排他执行</li>
+            <li><span class="s-dot">▸</span>结果按入队顺序（非完成顺序）</li>
+            <li><span class="s-dot">▸</span>Sibling AbortController（Bash出错中断兄弟工具）</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: 12+设计模式总评 -->
+    <section id="sec-patterns" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green)">🎨</span>12+设计模式总评</h2>
+        <p>源码中发现的核心设计模式及其评价</p>
+      </div>
+      <div class="table-scroll">
+        <table class="pattern-table">
+          <thead>
+            <tr><th>模式</th><th>应用场景</th><th>评价</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="p-name">AsyncGenerator Pipeline</td><td>流式处理</td><td class="p-stars">⭐⭐⭐⭐⭐ 零依赖+背压+取消</td></tr>
+            <tr><td class="p-name">Isolated Execution</td><td>Agent隔离</td><td class="p-stars">⭐⭐⭐⭐⭐ CoW文件缓存+Worktree</td></tr>
+            <tr><td class="p-name">System Prompt as Policy</td><td>行为配置</td><td class="p-stars">⭐⭐⭐⭐ 灵活但提示词过长</td></tr>
+            <tr><td class="p-name">Configuration as Pattern</td><td>Agent定义</td><td class="p-stars">⭐⭐⭐⭐ YAML简洁但能力有限</td></tr>
+            <tr><td class="p-name">Filesystem as Infrastructure</td><td>通信/缓存</td><td class="p-stars">⭐⭐⭐⭐ 可靠但性能一般</td></tr>
+            <tr><td class="p-name">Anti-lazy Cognitive Guards</td><td>质量控制</td><td class="p-stars">⭐⭐⭐⭐ 创新但增加Token</td></tr>
+            <tr><td class="p-name">Feature Gate Compilation</td><td>包优化</td><td class="p-stars">⭐⭐⭐⭐⭐ 编译时消除</td></tr>
+            <tr><td class="p-name">Fail-Closed Defaults</td><td>安全</td><td class="p-stars">⭐⭐⭐⭐⭐ 默认安全</td></tr>
+            <tr><td class="p-name">Zod Dual Validation</td><td>类型安全</td><td class="p-stars">⭐⭐⭐⭐ 编译+运行时</td></tr>
+            <tr><td class="p-name">Layered Permissions</td><td>权限</td><td class="p-stars">⭐⭐⭐⭐ 纵深防御</td></tr>
+            <tr><td class="p-name">Watermark Error Scoping</td><td>错误隔离</td><td class="p-stars">⭐⭐⭐⭐ 精确恢复</td></tr>
+            <tr><td class="p-name">Builder Pattern</td><td>配置组装</td><td class="p-stars">⭐⭐⭐ 标准但链长</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 4: 架构优势深度分析 -->
+    <section id="sec-pros" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green)">✅</span>架构优势深度分析</h2>
+        <p>Claude Code 架构中的8大核心优势</p>
+      </div>
+      <div class="advantage-cards">
+        <div class="advantage-card"><div class="adv-num">1</div><div class="adv-info"><div class="adv-name">AsyncGenerator管道</div><div class="adv-desc">零外部依赖实现完整流式处理，天然背压控制，嵌套组合通过yield*，取消通过return()链式传播。对比EventEmitter和RxJS全面胜出。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">2</div><div class="adv-info"><div class="adv-name">配置即策略(Configuration-as-Policy)</div><div class="adv-desc">Coordinator通过纯系统提示词注入实现多Agent协调，零代码路径修改。Agent行为全部通过YAML+提示词配置。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">3</div><div class="adv-info"><div class="adv-name">Fail-Closed安全默认</div><div class="adv-desc">工具默认非并发安全、默认非只读。必须显式声明安全属性。新工具自动获得最严格约束。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">4</div><div class="adv-info"><div class="adv-name">Feature Gate编译优化</div><div class="adv-desc">Bun构建时评估条件分支，死代码完全消除。20+特性标识控制包体积。对比运行时Feature Flag，无字符串泄露，无包体积浪费。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">5</div><div class="adv-info"><div class="adv-name">五层上下文压缩</div><div class="adv-desc">渐进式多策略协同：工具预算→历史修剪→微压缩→上下文折叠→自动压缩。缓存感知避免破坏Prompt缓存。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">6</div><div class="adv-info"><div class="adv-name">Copy-on-Write文件缓存</div><div class="adv-desc">Agent间天然并行安全，无需加锁。脏读问题在架构层面消除。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">7</div><div class="adv-info"><div class="adv-name">七层权限纵深防御</div><div class="adv-desc">从编译时工具池过滤到运行时用户确认，每层独立生效。旁路免疫保护关键目录。</div></div></div>
+        <div class="advantage-card"><div class="adv-num">8</div><div class="adv-info"><div class="adv-name">Watermark错误隔离</div><div class="adv-desc">文件状态快照+水位标记，精确定位错误影响范围，支持精确回滚。</div></div></div>
+      </div>
+    </section>
+
+    <!-- Section 5: 架构问题深度分析 -->
+    <section id="sec-cons" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange)">⚠️</span>架构问题深度分析</h2>
+        <p>需要关注的8个架构问题与改进空间</p>
+      </div>
+      <div class="issue-cards">
+        <div class="issue-card"><div class="issue-num">1</div><div class="issue-info"><div class="issue-name">单文件过大</div><div class="issue-desc">main.tsx 4,683行，query.ts 1,729行，bridge/main.ts 2,999行。违反单一职责，增加理解和维护难度。</div></div></div>
+        <div class="issue-card"><div class="issue-num">2</div><div class="issue-info"><div class="issue-name">深度状态更新</div><div class="issue-desc">不可变更新模式在深层嵌套对象上导致冗长的展开操作，没有Immer等辅助库。</div></div></div>
+        <div class="issue-card"><div class="issue-num">3</div><div class="issue-info"><div class="issue-name">测试复杂度</div><div class="issue-desc">Agent隔离+多模式+异步执行的组合爆炸导致测试场景庞大。VCR夹具管理增加维护成本。</div></div></div>
+        <div class="issue-card"><div class="issue-num">4</div><div class="issue-info"><div class="issue-name">包体积</div><div class="issue-desc">即使有Feature Gate优化，完整包仍然较大。Bedrock SDK等可选依赖的懒加载是权宜之计。</div></div></div>
+        <div class="issue-card"><div class="issue-num">5</div><div class="issue-info"><div class="issue-name">错误堆栈</div><div class="issue-desc">AsyncGenerator链式调用导致错误堆栈信息丢失，调试困难。</div></div></div>
+        <div class="issue-card"><div class="issue-num">6</div><div class="issue-info"><div class="issue-name">缺少中间件层</div><div class="issue-desc">工具执行管道没有通用中间件机制，PreToolUse/PostToolUse钩子能力有限。</div></div></div>
+        <div class="issue-card"><div class="issue-num">7</div><div class="issue-info"><div class="issue-name">Token消耗不可预测</div><div class="issue-desc">递归Agent的Token消耗随任务复杂度非线性增长，预算控制只能事后截断。</div></div></div>
+        <div class="issue-card"><div class="issue-num">8</div><div class="issue-info"><div class="issue-name">Coordinator提示词过长</div><div class="issue-desc">多Agent协调的系统提示词包含大量指令，占用有效上下文窗口。</div></div></div>
+      </div>
+    </section>
+
+    <!-- Section 6: 与主流框架对比 -->
+    <section id="sec-compare" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan)">⚖️</span>与主流框架对比</h2>
+        <p>Claude Code 与主流 AI Agent 框架的全面对比</p>
+      </div>
+      <div class="table-scroll">
+        <table class="compare-table">
+          <thead>
+            <tr><th>维度</th><th>Claude Code</th><th>AutoGPT</th><th>CrewAI</th><th>LangGraph</th><th>MetaGPT</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>架构风格</td><td>React终端应用</td><td>Python脚本</td><td>角色框架</td><td>状态图</td><td>SOP框架</td></tr>
+            <tr><td>Agent隔离</td><td class="stars">⭐⭐⭐⭐⭐</td><td class="stars">⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+            <tr><td>工具生态</td><td class="stars">⭐⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+            <tr><td>安全机制</td><td class="stars">⭐⭐⭐⭐⭐</td><td class="stars">⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+            <tr><td>通信机制</td><td class="stars">⭐⭐⭐⭐⭐</td><td class="stars">⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+            <tr><td>可扩展性</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+            <tr><td>学习曲线</td><td class="stars">⭐⭐</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+            <tr><td>生产就绪</td><td class="stars">⭐⭐⭐⭐⭐</td><td class="stars">⭐⭐</td><td class="stars">⭐⭐⭐</td><td class="stars">⭐⭐⭐⭐</td><td class="stars">⭐⭐⭐</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 7: 关键设计决策分析 -->
+    <section id="sec-decisions" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(247,120,186,0.12);color:var(--accent-pink)">🎯</span>关键设计决策分析</h2>
+        <p>理解核心技术选型背后的权衡考量</p>
+      </div>
+      <div class="decision-cards">
+        <div class="decision-card">
+          <div class="decision-q"><span class="q-icon">❓</span>为什么选React+Ink?</div>
+          <div class="decision-a">复杂状态管理（多Agent、流式文本、工具状态、Diff显示）需要声明式UI。80+组件、80+Hooks的复杂度证明了选择正确性。代价是React reconciler开销。</div>
+        </div>
+        <div class="decision-card">
+          <div class="decision-q"><span class="q-icon">❓</span>为什么AsyncGenerator而非RxJS?</div>
+          <div class="decision-a">零依赖、天然背压、TypeScript类型安全、yield*嵌套组合。在终端环境下，RxJS的操作符链过于重量级。</div>
+        </div>
+        <div class="decision-card">
+          <div class="decision-q"><span class="q-icon">❓</span>为什么自定义状态管理?</div>
+          <div class="decision-a">Zustand/Redux面向浏览器环境，终端UI（Ink）需要特殊集成。AppState的getAppState/setAppState更轻量。</div>
+        </div>
+        <div class="decision-card">
+          <div class="decision-q"><span class="q-icon">❓</span>为什么Filesystem as Infrastructure?</div>
+          <div class="decision-a">Agent间通信、缓存、记忆存储统一使用文件系统。可靠性高，但性能受限于I/O。</div>
+        </div>
+        <div class="decision-card">
+          <div class="decision-q"><span class="q-icon">❓</span>为什么Feature Gate编译优化?</div>
+          <div class="decision-a">运行时Feature Flag会在产物中留下字符串和代码路径。编译时消除彻底解决包体积和信息泄露问题。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 8: 架构演进建议 -->
+    <section id="sec-future" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(245,213,71,0.12);color:var(--accent-yellow)">🚀</span>架构演进建议</h2>
+        <p>面向未来的架构改进方向</p>
+      </div>
+      <div class="suggestion-cards">
+        <div class="suggestion-card"><div class="sug-num">1</div><div class="sug-info"><div class="sug-name">拆分大文件</div><div class="sug-desc">main.tsx、query.ts、bridge/main.ts需要模块化拆分</div></div></div>
+        <div class="suggestion-card"><div class="sug-num">2</div><div class="sug-info"><div class="sug-name">引入中间件层</div><div class="sug-desc">工具执行管道需要通用中间件机制</div></div></div>
+        <div class="suggestion-card"><div class="sug-num">3</div><div class="sug-info"><div class="sug-name">优化Token预测</div><div class="sug-desc">递归Agent需要更精确的Token消耗预测模型</div></div></div>
+        <div class="suggestion-card"><div class="sug-num">4</div><div class="sug-info"><div class="sug-name">改进错误追踪</div><div class="sug-desc">AsyncGenerator链需要增强的堆栈保留</div></div></div>
+        <div class="suggestion-card"><div class="sug-num">5</div><div class="sug-info"><div class="sug-name">Coordinator优化</div><div class="sug-desc">缩短系统提示，或改用结构化配置替代自然语言指令</div></div></div>
+        <div class="suggestion-card"><div class="sug-num">6</div><div class="sug-info"><div class="sug-name">增量压缩</div><div class="sug-desc">上下文压缩应支持增量更新而非全量替换</div></div></div>
+      </div>
+    </section>
+
+    <!-- Section 9: 总结评分 -->
+    <section id="sec-score" class="content-section fade-section">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple)">🏆</span>总结评分</h2>
+        <p>综合评估 Claude Code 架构质量</p>
+      </div>
+
+      <!-- Radar Chart -->
+      <div class="radar-wrapper">
+        <div class="radar-chart">
+          <svg viewBox="0 0 300 300" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <!-- Grid: 3 concentric heptagons -->
+            <polygon points="150,110 181.2,125.1 189,158.9 167.4,186.1 132.6,186.1 111,158.9 118.8,125.1" fill="none" stroke="#30363d" stroke-width="0.5" opacity="0.5"/>
+            <polygon points="150,70 212.5,100.2 228,167.8 184.8,222.2 115.2,222.2 72,167.8 87.5,100.2" fill="none" stroke="#30363d" stroke-width="0.5" opacity="0.5"/>
+            <polygon points="150,30 243.7,75.3 267,176.7 202.2,258.3 97.8,258.3 33,176.7 56.3,75.3" fill="none" stroke="#30363d" stroke-width="1" opacity="0.6"/>
+            <!-- Axis lines -->
+            <line x1="150" y1="150" x2="150" y2="30" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <line x1="150" y1="150" x2="243.7" y2="75.3" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <line x1="150" y1="150" x2="267" y2="176.7" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <line x1="150" y1="150" x2="202.2" y2="258.3" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <line x1="150" y1="150" x2="97.8" y2="258.3" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <line x1="150" y1="150" x2="33" y2="176.7" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <line x1="150" y1="150" x2="56.3" y2="75.3" stroke="#30363d" stroke-width="0.5" opacity="0.4"/>
+            <!-- Data polygon -->
+            <polygon points="150,36 229.6,86.4 243.6,171.4 194.4,242 103.1,247.3 68.1,168.7 79.7,93.8" fill="rgba(88,166,255,0.15)" stroke="#58a6ff" stroke-width="2"/>
+            <!-- Data points -->
+            <circle cx="150" cy="36" r="4" fill="#58a6ff"/>
+            <circle cx="229.6" cy="86.4" r="4" fill="#58a6ff"/>
+            <circle cx="243.6" cy="171.4" r="4" fill="#58a6ff"/>
+            <circle cx="194.4" cy="242" r="4" fill="#58a6ff"/>
+            <circle cx="103.1" cy="247.3" r="4" fill="#58a6ff"/>
+            <circle cx="68.1" cy="168.7" r="4" fill="#58a6ff"/>
+            <circle cx="79.7" cy="93.8" r="4" fill="#58a6ff"/>
+            <!-- Labels -->
+            <text x="150" y="18" text-anchor="middle" fill="#8b949e" font-size="11">安全性 9.5</text>
+            <text x="256" y="72" text-anchor="start" fill="#8b949e" font-size="11">可扩展性 8.5</text>
+            <text x="276" y="180" text-anchor="start" fill="#8b949e" font-size="11">代码质量 8.0</text>
+            <text x="206" y="275" text-anchor="middle" fill="#8b949e" font-size="11">性能优化 8.5</text>
+            <text x="94" y="275" text-anchor="middle" fill="#8b949e" font-size="11">创新性 9.0</text>
+            <text x="20" y="180" text-anchor="end" fill="#8b949e" font-size="11">可维护性 7.0</text>
+            <text x="44" y="72" text-anchor="end" fill="#8b949e" font-size="11">文档完备性 7.5</text>
+          </svg>
+        </div>
+
+        <!-- Score Bars -->
+        <div class="score-bars">
+          <div class="score-row"><span class="score-label">安全性</span><div class="score-bar"><div class="score-bar-fill" style="width:95%"></div></div><span class="score-val">9.5</span></div>
+          <div class="score-row"><span class="score-label">可扩展性</span><div class="score-bar"><div class="score-bar-fill" style="width:85%"></div></div><span class="score-val">8.5</span></div>
+          <div class="score-row"><span class="score-label">代码质量</span><div class="score-bar"><div class="score-bar-fill" style="width:80%"></div></div><span class="score-val">8.0</span></div>
+          <div class="score-row"><span class="score-label">性能优化</span><div class="score-bar"><div class="score-bar-fill" style="width:85%"></div></div><span class="score-val">8.5</span></div>
+          <div class="score-row"><span class="score-label">创新性</span><div class="score-bar"><div class="score-bar-fill" style="width:90%"></div></div><span class="score-val">9.0</span></div>
+          <div class="score-row"><span class="score-label">可维护性</span><div class="score-bar"><div class="score-bar-fill" style="width:70%"></div></div><span class="score-val">7.0</span></div>
+          <div class="score-row"><span class="score-label">文档完备性</span><div class="score-bar"><div class="score-bar-fill" style="width:75%"></div></div><span class="score-val">7.5</span></div>
+        </div>
+      </div>
+
+      <!-- Overall Score -->
+      <div class="overall-score">
+        <div><span class="overall-number">8.4</span><span class="overall-sub"> /10</span></div>
+        <div class="overall-label">综合架构质量评分</div>
+        <div class="overall-badge">生产级AI Agent框架的优秀范例</div>
+      </div>
+
+      <!-- Verdict -->
+      <div class="verdict-card">
+        <div class="verdict-inner">
+          <div class="verdict-text">Claude Code展现了<strong>生产级AI Agent系统的顶尖工程实践</strong>。其AsyncGenerator管道、七层安全架构、五路通信机制等设计在业界具有前瞻性。主要改进空间在于大文件拆分、中间件抽象和Token预测优化。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p><span class="footer-brand">Claude Code v2.1.88</span> 源码深度分析报告</p>
+        <p>基于静态源码分析 · 仅供学习研究</p>
+      </div>
+    </footer>
+
+  </div>
+</main>
+
+<script>
+// Fade-in observer
+const fadeSections = document.querySelectorAll('.fade-section');
+const fadeObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); fadeObs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+fadeSections.forEach(s => fadeObs.observe(s));
+
+// Sidebar TOC active tracking
+const tocLinks = document.querySelectorAll('#tocNav a');
+const sections = document.querySelectorAll('.content-section');
+const tocObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      tocLinks.forEach(l => l.classList.remove('active'));
+      const id = e.target.getAttribute('id');
+      const link = document.querySelector('#tocNav a[href="#' + id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.2, rootMargin: '-80px 0px -60% 0px' });
+sections.forEach(s => tocObs.observe(s));
+
+// Sidebar toggle
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebar = document.getElementById('sidebar');
+sidebarToggle.addEventListener('click', () => { sidebar.classList.toggle('open'); });
+document.addEventListener('click', (e) => {
+  if (window.innerWidth <= 1024 && !sidebar.contains(e.target) && e.target !== sidebarToggle) {
+    sidebar.classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>
