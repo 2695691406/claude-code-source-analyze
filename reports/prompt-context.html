@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt工程与上下文管理 — Claude Code v2.1.88 源码分析</title>
+<style>
+/* ========== CSS Variables / Theme ========== */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--accent-cyan);
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* ========== Particle Background ========== */
+.particle-bg {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  border-radius: 50%; background: var(--accent-blue);
+  opacity: 0; animation: particleFloat linear infinite;
+}
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+/* ========== Top Navigation ========== */
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue);
+  padding: 6px 14px;
+  background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 20px;
+  transition: all var(--transition);
+}
+.top-nav .back-link:hover {
+  background: rgba(88,166,255,0.15);
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+}
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title {
+  font-size: 0.9rem; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ========== Sidebar TOC ========== */
+.sidebar {
+  position: fixed; top: 56px; left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - 56px);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50;
+  padding: 24px 0;
+  transform: translateX(0);
+  transition: transform var(--transition);
+}
+.sidebar-title {
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 0 20px;
+  margin-bottom: 12px;
+}
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 20px; font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-left: 3px solid transparent;
+  transition: all var(--transition);
+}
+.sidebar-nav a:hover {
+  color: var(--text-primary);
+  background: rgba(88,166,255,0.05);
+  border-left-color: rgba(88,166,255,0.3);
+}
+.sidebar-nav a.active {
+  color: var(--accent-blue);
+  background: rgba(88,166,255,0.08);
+  border-left-color: var(--accent-blue);
+  font-weight: 600;
+}
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-tertiary); font-size: 0.7rem;
+  font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num {
+  background: rgba(88,166,255,0.15);
+  color: var(--accent-blue);
+}
+.sidebar-toggle {
+  display: none;
+  position: fixed; top: 62px; left: 12px;
+  z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--text-secondary); font-size: 1.1rem;
+  align-items: center; justify-content: center;
+}
+
+/* ========== Main Content ========== */
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: 56px;
+  padding: 0;
+  position: relative; z-index: 1;
+  min-height: calc(100vh - 56px);
+}
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ========== Header ========== */
+.page-header {
+  padding: 60px 0 40px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.page-header::before {
+  content: ''; position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow {
+  0%   { transform: translate(-5%, -5%) scale(1); }
+  100% { transform: translate(5%, 5%) scale(1.1); }
+}
+.page-header .badge {
+  display: inline-block; padding: 5px 14px;
+  background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle {
+  font-size: 1rem; color: var(--text-secondary);
+  max-width: 600px; margin: 0 auto;
+}
+.header-line {
+  width: 60px; height: 3px;
+  background: var(--gradient-primary);
+  margin: 24px auto 0; border-radius: 2px;
+}
+
+/* ========== Section ========== */
+.content-section {
+  padding: 56px 0 20px;
+  scroll-margin-top: 80px;
+}
+.section-title {
+  margin-bottom: 36px;
+}
+.section-title h2 {
+  font-size: 1.6rem; font-weight: 700;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+}
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p {
+  color: var(--text-secondary); font-size: 0.95rem;
+  margin-left: 52px;
+}
+
+/* ========== Fade In ========== */
+.fade-section {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.fade-section.visible {
+  opacity: 1; transform: translateY(0);
+}
+
+/* ========== Layer Items (reused for prompt layers) ========== */
+.layers-list { display: flex; flex-direction: column; gap: 0; }
+.layer-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.layer-item::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.layer-item:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.layer-head {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 8px;
+}
+.layer-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.layer-name { font-size: 1.1rem; font-weight: 700; }
+.layer-body { margin-left: 50px; }
+.layer-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 6px; }
+.layer-files { display: flex; flex-wrap: wrap; gap: 6px; }
+.layer-files span {
+  font-size: 0.78rem; padding: 3px 10px;
+  background: var(--bg-tertiary);
+  border-radius: 12px; color: var(--text-muted);
+}
+.layer-arrow {
+  display: flex; align-items: center; justify-content: center;
+  height: 32px; position: relative;
+}
+.layer-arrow::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+  opacity: 0.3;
+}
+.layer-arrow svg {
+  width: 16px; height: 16px; fill: none;
+  stroke: var(--accent-blue); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+/* Layer colors */
+.layer-1::before { background: var(--accent-blue); }
+.layer-1 .layer-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.layer-1:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+
+.layer-2::before { background: var(--accent-purple); }
+.layer-2 .layer-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.layer-2:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+
+.layer-3::before { background: var(--accent-green); }
+.layer-3 .layer-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.layer-3:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+
+.layer-4::before { background: var(--accent-cyan); }
+.layer-4 .layer-num { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+.layer-4:hover { box-shadow: 0 0 20px rgba(118,228,247,0.12); }
+
+.layer-5::before { background: var(--accent-orange); }
+.layer-5 .layer-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.layer-5:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+
+.layer-6::before { background: var(--accent-pink); }
+.layer-6 .layer-num { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+.layer-6:hover { box-shadow: 0 0 20px rgba(247,120,186,0.12); }
+
+/* ========== Insight Box ========== */
+.insight-box {
+  background: var(--bg-card);
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin-top: 24px;
+  position: relative; overflow: hidden;
+}
+.insight-box::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+  background: var(--gradient-primary);
+}
+.insight-box .insight-title {
+  font-size: 0.95rem; font-weight: 700;
+  color: var(--accent-blue); margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.insight-box .insight-desc {
+  font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;
+}
+
+/* ========== Code Block ========== */
+.code-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin: 16px 0;
+  overflow-x: auto;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+.code-block .code-title {
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-muted); margin-bottom: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+}
+.code-block .code-comment { color: var(--text-muted); }
+.code-block .code-keyword { color: var(--accent-purple); }
+.code-block .code-string { color: var(--accent-green); }
+.code-block .code-fn { color: var(--accent-blue); }
+.code-block .code-arrow { color: var(--accent-orange); }
+
+/* ========== Memory Tier Cards ========== */
+.memory-tiers {
+  display: flex; flex-direction: column; gap: 14px;
+}
+.memory-tier {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.memory-tier::before {
+  content: ''; position: absolute;
+  left: 0; top: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.memory-tier:nth-child(1)::before { background: var(--accent-blue); }
+.memory-tier:nth-child(2)::before { background: var(--accent-green); }
+.memory-tier:nth-child(3)::before { background: var(--accent-orange); }
+.memory-tier:nth-child(4)::before { background: var(--accent-purple); }
+.memory-tier:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.memory-tier-icon {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+  background: var(--bg-secondary);
+}
+.memory-tier-info { flex: 1; min-width: 0; }
+.memory-tier-name { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.memory-tier-path { font-size: 0.82rem; color: var(--accent-cyan); margin-bottom: 4px; font-family: "SF Mono", "Fira Code", Consolas, monospace; }
+.memory-tier-desc { font-size: 0.88rem; color: var(--text-secondary); }
+
+/* ========== Flow List ========== */
+.flow-list { list-style: none; margin: 0; padding: 0; }
+.flow-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+  font-size: 0.9rem; color: var(--text-secondary);
+}
+.flow-list li:last-child { border-bottom: none; }
+.flow-icon {
+  flex-shrink: 0; margin-top: 2px;
+  font-size: 0.85rem; width: 20px; text-align: center;
+}
+
+/* ========== Pipeline Horizontal ========== */
+.pipeline-horizontal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px 20px;
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+.pipeline-stages {
+  display: flex; align-items: center; gap: 0;
+  min-width: 700px; justify-content: center;
+}
+.pipeline-stage {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 16px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  min-width: 110px; text-align: center;
+  transition: all var(--transition);
+}
+.pipeline-stage:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+  box-shadow: var(--glow-blue);
+}
+.pipeline-stage-icon { font-size: 1.5rem; }
+.pipeline-stage-name { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+.pipeline-stage-label { font-size: 0.7rem; color: var(--text-muted); }
+.pipeline-arrow {
+  font-size: 1.2rem; color: var(--accent-purple);
+  font-weight: 700; flex-shrink: 0; padding: 0 4px;
+}
+
+/* ========== Comparison Table ========== */
+.table-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow-x: auto; margin: 20px 0;
+}
+.compare-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.compare-table thead th {
+  background: var(--bg-secondary);
+  padding: 12px 16px;
+  font-weight: 700; font-size: 0.82rem;
+  text-align: left; color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+}
+.compare-table thead th:first-child {
+  border-radius: var(--radius-lg) 0 0 0;
+}
+.compare-table thead th:last-child {
+  border-radius: 0 var(--radius-lg) 0 0;
+}
+.compare-table tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.compare-table tbody tr:last-child td { border-bottom: none; }
+.compare-table tbody tr:hover { background: rgba(88,166,255,0.03); }
+.compare-table tbody td:first-child { font-weight: 600; color: var(--text-primary); }
+.compare-table .check { color: var(--accent-green); }
+.compare-table .warn { color: var(--accent-orange); }
+.compare-table .cross { color: var(--accent-red); }
+
+/* ========== Compression Pipeline ========== */
+.compress-pipeline { display: flex; flex-direction: column; gap: 0; }
+.compress-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.compress-card::before {
+  content: ''; position: absolute;
+  left: 0; top: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.compress-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.compress-head {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 8px;
+}
+.compress-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.compress-name { font-size: 1.05rem; font-weight: 700; }
+.compress-en { font-size: 0.78rem; color: var(--text-muted); margin-left: auto; }
+.compress-body { margin-left: 50px; }
+.compress-detail {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.88rem; color: var(--text-secondary);
+}
+.compress-detail span { display: flex; align-items: center; gap: 6px; }
+.compress-detail .detail-label {
+  font-weight: 600; color: var(--text-primary);
+  min-width: 40px;
+}
+.compress-arrow {
+  display: flex; align-items: center; justify-content: center;
+  height: 28px; position: relative;
+}
+.compress-arrow::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+  opacity: 0.25;
+}
+.compress-arrow svg {
+  width: 14px; height: 14px; fill: none;
+  stroke: var(--accent-blue); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+/* Compress layer colors */
+.cl-1::before { background: var(--accent-blue); }
+.cl-1 .compress-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.cl-1:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+
+.cl-2::before { background: var(--accent-purple); }
+.cl-2 .compress-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.cl-2:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+
+.cl-3::before { background: var(--accent-green); }
+.cl-3 .compress-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.cl-3:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+
+.cl-4::before { background: var(--accent-orange); }
+.cl-4 .compress-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.cl-4:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+
+.cl-5::before { background: var(--accent-red); }
+.cl-5 .compress-num { background: rgba(255,123,114,0.15); color: var(--accent-red); }
+.cl-5:hover { box-shadow: 0 0 20px rgba(255,123,114,0.12); }
+
+/* ========== Info Cards Grid ========== */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.info-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.info-card::after {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(135deg, transparent 60%, rgba(88,166,255,0.03) 100%);
+  pointer-events: none;
+}
+.info-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+  box-shadow: var(--glow-blue);
+}
+.info-card-icon { font-size: 1.8rem; margin-bottom: 12px; display: block; }
+.info-card-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.info-card-en { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px; }
+.info-card-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ========== Token Tree ========== */
+.token-tree {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  margin-bottom: 20px;
+}
+.token-tree-title {
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 16px;
+}
+.tree-node {
+  padding: 4px 0;
+  font-size: 0.88rem; color: var(--text-secondary);
+  font-family: "SF Mono", "Fira Code", Consolas, monospace;
+}
+.tree-node .tree-prefix { color: var(--text-muted); user-select: none; }
+.tree-node .tree-label { color: var(--accent-cyan); font-weight: 600; }
+.tree-node .tree-desc { color: var(--text-secondary); }
+.tree-root { color: var(--accent-blue); font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; }
+
+/* ========== Rate Limit Cards ========== */
+.rate-cards { display: flex; flex-direction: column; gap: 14px; }
+.rate-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  display: flex; align-items: center; gap: 16px;
+  transition: all var(--transition);
+}
+.rate-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.rate-icon {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.rate-info { flex: 1; }
+.rate-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 2px; }
+.rate-desc { font-size: 0.85rem; color: var(--text-secondary); }
+.rate-badge {
+  font-size: 0.72rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ========== Technique List ========== */
+.technique-list { display: flex; flex-direction: column; gap: 14px; }
+.technique-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.technique-item::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 2px;
+}
+.technique-item:nth-child(1)::before { background: var(--gradient-primary); }
+.technique-item:nth-child(2)::before { background: var(--gradient-green); }
+.technique-item:nth-child(3)::before { background: var(--gradient-warm); }
+.technique-item:nth-child(4)::before { background: var(--gradient-cyan); }
+.technique-item:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-2px);
+  box-shadow: var(--glow-blue);
+}
+.technique-name { font-size: 1rem; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.technique-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ========== Speculation Flow ========== */
+.speculation-flow {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  position: relative; overflow: hidden;
+}
+.speculation-flow::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+  background: var(--gradient-cyan);
+}
+.spec-trigger {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 1rem; font-weight: 700;
+}
+.spec-trigger-icon { font-size: 1.3rem; }
+.spec-branches {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-left: 24px;
+  border-left: 2px solid rgba(118,228,247,0.3);
+  padding-left: 20px;
+}
+.spec-branch {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.9rem; color: var(--text-secondary);
+  padding: 8px 14px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+.spec-branch:hover { background: var(--bg-tertiary); }
+.spec-branch-icon { font-size: 0.9rem; flex-shrink: 0; }
+.spec-branch strong { color: var(--text-primary); }
+
+/* ========== Validation Pipeline ========== */
+.validation-flow {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  overflow-x: auto;
+}
+.validation-stages {
+  display: flex; align-items: center; gap: 0;
+  min-width: 500px; justify-content: center; flex-wrap: wrap;
+}
+.val-stage {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  text-align: center; min-width: 100px;
+  transition: all var(--transition);
+}
+.val-stage:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-2px);
+}
+.val-stage-icon { font-size: 1.3rem; }
+.val-stage-name { font-size: 0.8rem; font-weight: 700; color: var(--text-primary); }
+.val-arrow { color: var(--accent-purple); font-weight: 700; font-size: 1rem; padding: 0 6px; flex-shrink: 0; }
+.val-error-branch {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 16px; padding: 12px 16px;
+  background: rgba(255,123,114,0.06);
+  border: 1px solid rgba(255,123,114,0.2);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem; color: var(--text-secondary);
+}
+.val-error-branch .val-error-icon { color: var(--accent-red); font-size: 1rem; flex-shrink: 0; }
+
+/* ========== State Cards ========== */
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.state-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: all var(--transition);
+}
+.state-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+  box-shadow: var(--glow-blue);
+}
+.state-card-icon { font-size: 1.8rem; margin-bottom: 10px; }
+.state-card-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+.state-card-desc { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* ========== Evaluation Cards ========== */
+.eval-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+}
+.eval-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.eval-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+}
+.eval-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+}
+.eval-pros::before { background: var(--gradient-green); }
+.eval-pros:hover { box-shadow: var(--glow-green); }
+.eval-cons::before { background: linear-gradient(90deg, var(--accent-orange), var(--accent-red)); }
+.eval-cons:hover { box-shadow: 0 0 20px rgba(240,136,62,0.2); }
+.eval-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1.15rem; font-weight: 700;
+  margin-bottom: 16px;
+}
+.eval-list { list-style: none; }
+.eval-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  font-size: 0.9rem; color: var(--text-secondary);
+  line-height: 1.6;
+}
+.eval-list li:last-child { border-bottom: none; }
+.eval-list .eval-icon {
+  flex-shrink: 0; margin-top: 3px; font-size: 0.85rem;
+}
+
+/* ========== Footer ========== */
+.footer {
+  padding: 48px 0; text-align: center;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer p {
+  color: var(--text-muted); font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.footer .footer-brand {
+  font-weight: 600;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .eval-grid { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+  .state-grid { grid-template-columns: 1fr 1fr; }
+  .pipeline-stages { min-width: 600px; }
+  .top-nav .page-title { display: none; }
+}
+@media (max-width: 480px) {
+  .state-grid { grid-template-columns: 1fr; }
+  .layer-body { margin-left: 0; margin-top: 8px; }
+  .layer-head { flex-wrap: wrap; }
+  .compress-body { margin-left: 0; margin-top: 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Particle Background -->
+<div class="particle-bg" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<!-- ==================== Top Navigation ==================== -->
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l4-4m-4 4l4 4"/></svg>
+    返回首页
+  </a>
+  <span class="page-title">Prompt工程与上下文管理 — Claude Code v2.1.88</span>
+</nav>
+
+<!-- Sidebar Toggle (mobile) -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+
+<!-- ==================== Sidebar TOC ==================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-system-prompt"><span class="toc-num">1</span>系统提示词架构</a></li>
+    <li><a href="#sec-claudemd"><span class="toc-num">2</span>CLAUDE.md记忆体系</a></li>
+    <li><a href="#sec-async-pipeline"><span class="toc-num">3</span>AsyncGenerator管道</a></li>
+    <li><a href="#sec-compression"><span class="toc-num">4</span>五层上下文压缩</a></li>
+    <li><a href="#sec-token"><span class="toc-num">5</span>Token估算与成本</a></li>
+    <li><a href="#sec-cache"><span class="toc-num">6</span>Prompt缓存优化</a></li>
+    <li><a href="#sec-speculation"><span class="toc-num">7</span>投机执行</a></li>
+    <li><a href="#sec-validation"><span class="toc-num">8</span>结构化输出与验证</a></li>
+    <li><a href="#sec-state"><span class="toc-num">9</span>状态管理架构</a></li>
+    <li><a href="#sec-eval"><span class="toc-num">10</span>设计评析</a></li>
+  </ul>
+</aside>
+
+<!-- ==================== Main Content ==================== -->
+<main class="main-content">
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="badge">PROMPT ENGINEERING</div>
+      <h1>📝 Prompt工程与上下文管理</h1>
+      <p class="subtitle">深入剖析 Claude Code 的系统提示词架构、记忆体系、流式管道、上下文压缩与Token管理策略</p>
+      <div class="header-line"></div>
+    </div>
+  </header>
+
+  <!-- ==================== 1. 系统提示词架构 ==================== -->
+  <section class="content-section fade-section" id="sec-system-prompt">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🏗️</span>
+          系统提示词架构
+        </h2>
+        <p>System Prompt 是核心配置机制，6 层提示词按优先级组装</p>
+      </div>
+
+      <div class="layers-list">
+        <!-- Layer 1 -->
+        <div class="layer-item layer-1">
+          <div class="layer-head">
+            <span class="layer-num">1</span>
+            <span class="layer-name">🔒 核心指令层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">基础行为规则、安全约束、角色定义 — 不可覆盖的底层策略</p>
+            <div class="layer-files">
+              <span>行为规则</span>
+              <span>安全约束</span>
+              <span>角色定义</span>
+              <span>输出格式</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 2 -->
+        <div class="layer-item layer-2">
+          <div class="layer-head">
+            <span class="layer-num">2</span>
+            <span class="layer-name">🔧 工具描述层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">43+ 工具的 JSON Schema 定义和使用说明，模型据此决定调用哪个工具</p>
+            <div class="layer-files">
+              <span>43+ 工具 Schema</span>
+              <span>参数描述</span>
+              <span>使用约束</span>
+              <span>示例说明</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 3 -->
+        <div class="layer-item layer-3">
+          <div class="layer-head">
+            <span class="layer-num">3</span>
+            <span class="layer-name">📋 CLAUDE.md层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">项目级记忆文件，用户级 → 项目级 → 本地级三级合并，自然语言配置</p>
+            <div class="layer-files">
+              <span>用户级 ~/.claude/</span>
+              <span>项目级 .claude/</span>
+              <span>本地级 .local.md</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 4 -->
+        <div class="layer-item layer-4">
+          <div class="layer-head">
+            <span class="layer-num">4</span>
+            <span class="layer-name">🤖 Agent配置层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">Agent YAML 定义的行为约束，包含工具限制、提示覆盖和角色设定</p>
+            <div class="layer-files">
+              <span>agents/*.yml</span>
+              <span>工具白名单</span>
+              <span>omitClaudeMd</span>
+              <span>角色提示</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 5 -->
+        <div class="layer-item layer-5">
+          <div class="layer-head">
+            <span class="layer-num">5</span>
+            <span class="layer-name">🎯 Coordinator层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">多 Agent 协调的任务分配提示，Coordinator 模式下的子任务分解与汇总</p>
+            <div class="layer-files">
+              <span>任务分解</span>
+              <span>子Agent调度</span>
+              <span>结果汇总</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 6 -->
+        <div class="layer-item layer-6">
+          <div class="layer-head">
+            <span class="layer-num">6</span>
+            <span class="layer-name">🔄 动态上下文层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">文件状态快照、会话记忆、Skill 描述 — 运行时动态注入的上下文信息</p>
+            <div class="layer-files">
+              <span>文件快照</span>
+              <span>会话记忆</span>
+              <span>Skill描述</span>
+              <span>环境状态</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key Insight -->
+      <div class="insight-box">
+        <div class="insight-title">💡 核心洞察：System Prompt as Policy</div>
+        <div class="insight-desc">
+          所有行为控制通过提示词注入实现，零代码路径修改。这意味着新功能、新约束、新角色都可以通过修改提示词配置来实现，无需修改任何代码逻辑。提示词的组装顺序决定了优先级：核心指令 → 工具描述 → 记忆 → Agent → 协调 → 动态上下文。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. CLAUDE.md记忆体系 ==================== -->
+  <section class="content-section fade-section" id="sec-claudemd">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">🧠</span>
+          CLAUDE.md记忆体系
+        </h2>
+        <p>三级记忆文件系统，自然语言配置实现项目级持久化记忆</p>
+      </div>
+
+      <!-- Memory Tiers -->
+      <div class="memory-tiers">
+        <div class="memory-tier">
+          <div class="memory-tier-icon">🌍</div>
+          <div class="memory-tier-info">
+            <div class="memory-tier-name">用户级（全局偏好）</div>
+            <div class="memory-tier-path">~/.claude/CLAUDE.md</div>
+            <div class="memory-tier-desc">跨项目的全局配置，个人编码风格、常用工具偏好、通用行为规则</div>
+          </div>
+        </div>
+        <div class="memory-tier">
+          <div class="memory-tier-icon">📂</div>
+          <div class="memory-tier-info">
+            <div class="memory-tier-name">项目级（团队共享）</div>
+            <div class="memory-tier-path">.claude/CLAUDE.md</div>
+            <div class="memory-tier-desc">项目级配置，团队共享的编码规范、项目结构说明、技术栈约束</div>
+          </div>
+        </div>
+        <div class="memory-tier">
+          <div class="memory-tier-icon">👤</div>
+          <div class="memory-tier-info">
+            <div class="memory-tier-name">本地级（个人覆盖）</div>
+            <div class="memory-tier-path">.claude/CLAUDE.local.md</div>
+            <div class="memory-tier-desc">不提交到版本控制的个人覆盖配置，优先级最高，可覆盖项目级配置</div>
+          </div>
+        </div>
+        <div class="memory-tier">
+          <div class="memory-tier-icon">🤖</div>
+          <div class="memory-tier-info">
+            <div class="memory-tier-name">Agent特定配置</div>
+            <div class="memory-tier-path">.claude/agents/xxx.yml</div>
+            <div class="memory-tier-desc">Agent 专属的行为配置，可选 <code>omitClaudeMd</code> 跳过记忆加载</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Process -->
+      <div class="code-block" style="margin-top:24px;">
+        <div class="code-title">加载流程</div>
+        <div class="tree-node"><span class="tree-prefix">① </span><span class="tree-desc">递归向上搜索 CLAUDE.md 文件（从当前目录到根目录）</span></div>
+        <div class="tree-node"><span class="tree-prefix">② </span><span class="tree-desc">用户级 → 项目级 → 本地级 顺序合并（后者覆盖前者）</span></div>
+        <div class="tree-node"><span class="tree-prefix">③ </span><span class="tree-desc">Agent 配置可选 <code>omitClaudeMd</code> 跳过记忆加载</span></div>
+        <div class="tree-node"><span class="tree-prefix">④ </span><span class="tree-desc">合并后的内容作为系统提示词的一部分注入</span></div>
+      </div>
+
+      <!-- Skill System -->
+      <div class="insight-box" style="margin-top:20px;">
+        <div class="insight-title">⚡ Skill系统：自然语言序列化</div>
+        <div class="insight-desc">
+          Skill 以 Markdown 格式存储在 CLAUDE.md 中，每个 Skill 是一个命名的操作序列。模型读取后可自主执行多步骤任务，实现「一次教学，永久记忆」的效果。
+        </div>
+      </div>
+      <div class="code-block">
+        <div class="code-title">Skill 示例</div>
+        <div class="tree-node"><span class="code-keyword">## Skills</span></div>
+        <div class="tree-node"><span class="code-keyword">### deploy</span></div>
+        <div class="tree-node"><span class="code-string">1. Run `npm run build`</span></div>
+        <div class="tree-node"><span class="code-string">2. Run `npm run test`</span></div>
+        <div class="tree-node"><span class="code-string">3. Run `./deploy.sh`</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. AsyncGenerator管道设计 ==================== -->
+  <section class="content-section fade-section" id="sec-async-pipeline">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">🔄</span>
+          AsyncGenerator管道设计
+        </h2>
+        <p>五阶段流式管道，基于 AsyncGenerator 实现零依赖背压控制</p>
+      </div>
+
+      <!-- Pipeline Visualization -->
+      <div class="pipeline-horizontal">
+        <div class="pipeline-stages">
+          <div class="pipeline-stage">
+            <div class="pipeline-stage-icon">📥</div>
+            <div class="pipeline-stage-name">用户输入</div>
+            <div class="pipeline-stage-label">Stage 1</div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-stage">
+            <div class="pipeline-stage-icon">⚙️</div>
+            <div class="pipeline-stage-name">processUserInput</div>
+            <div class="pipeline-stage-label">Stage 2</div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-stage">
+            <div class="pipeline-stage-icon">☁️</div>
+            <div class="pipeline-stage-name">API流式调用</div>
+            <div class="pipeline-stage-label">Stage 3</div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-stage">
+            <div class="pipeline-stage-icon">🔧</div>
+            <div class="pipeline-stage-name">工具执行</div>
+            <div class="pipeline-stage-label">Stage 4</div>
+          </div>
+          <div class="pipeline-arrow">→</div>
+          <div class="pipeline-stage">
+            <div class="pipeline-stage-icon">📤</div>
+            <div class="pipeline-stage-name">SDK消费者</div>
+            <div class="pipeline-stage-label">Stage 5</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison Table -->
+      <div class="table-wrapper">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>特性</th>
+              <th>AsyncGenerator</th>
+              <th>EventEmitter</th>
+              <th>RxJS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>背压控制</td>
+              <td class="check">✅ 天然支持</td>
+              <td class="cross">❌ 无</td>
+              <td class="check">✅ 需操作符</td>
+            </tr>
+            <tr>
+              <td>取消传播</td>
+              <td class="check">✅ return()链式</td>
+              <td class="cross">❌ 手动</td>
+              <td class="check">✅ unsubscribe</td>
+            </tr>
+            <tr>
+              <td>类型安全</td>
+              <td class="check">✅ TypeScript</td>
+              <td class="warn">⚠️ 弱</td>
+              <td class="check">✅ 强</td>
+            </tr>
+            <tr>
+              <td>组合能力</td>
+              <td class="check">✅ yield*</td>
+              <td class="warn">⚠️ 手动</td>
+              <td class="check">✅ pipe()</td>
+            </tr>
+            <tr>
+              <td>错误传播</td>
+              <td class="check">✅ try/catch</td>
+              <td class="warn">⚠️ error事件</td>
+              <td class="check">✅ catchError</td>
+            </tr>
+            <tr>
+              <td>惰性执行</td>
+              <td class="check">✅</td>
+              <td class="cross">❌ 立即</td>
+              <td class="check">✅</td>
+            </tr>
+            <tr>
+              <td>内存占用</td>
+              <td class="check">✅ 最小</td>
+              <td class="warn">⚠️ 监听器</td>
+              <td class="warn">⚠️ 操作符链</td>
+            </tr>
+            <tr>
+              <td>外部依赖</td>
+              <td class="check">✅ 零</td>
+              <td class="check">✅ 零</td>
+              <td class="cross">❌ RxJS库</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Fire-and-forget -->
+      <div class="insight-box">
+        <div class="insight-title">🔥 Fire-and-Forget 转录优化</div>
+        <div class="insight-desc">
+          转录文件写入采用非阻塞模式（fire-and-forget），不等待磁盘 I/O 完成即可继续流式处理。这确保了转录记录不会成为管道的性能瓶颈，同时保证了完整的会话记录。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 4. 五层上下文压缩策略 ==================== -->
+  <section class="content-section fade-section" id="sec-compression">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">🗜️</span>
+          五层上下文压缩策略
+        </h2>
+        <p>渐进式压缩管道，从工具结果到完整上下文的多级压缩</p>
+      </div>
+
+      <div class="compress-pipeline">
+        <!-- Layer 1 -->
+        <div class="compress-card cl-1">
+          <div class="compress-head">
+            <span class="compress-num">1</span>
+            <span class="compress-name">工具结果预算</span>
+            <span class="compress-en">Tool Result Budget</span>
+          </div>
+          <div class="compress-body">
+            <div class="compress-detail">
+              <span><span class="detail-label">触发:</span> 单次工具输出超限</span>
+              <span><span class="detail-label">策略:</span> 截断为预算内大小</span>
+              <span><span class="detail-label">保留:</span> 头尾信息优先，中间内容省略</span>
+            </div>
+          </div>
+        </div>
+        <div class="compress-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 2 -->
+        <div class="compress-card cl-2">
+          <div class="compress-head">
+            <span class="compress-num">2</span>
+            <span class="compress-name">历史修剪</span>
+            <span class="compress-en">History Snip</span>
+          </div>
+          <div class="compress-body">
+            <div class="compress-detail">
+              <span><span class="detail-label">触发:</span> 旧对话累积过多</span>
+              <span><span class="detail-label">策略:</span> 渐进式修剪旧消息</span>
+              <span><span class="detail-label">保留:</span> 最近 N 轮对话完整保留</span>
+            </div>
+          </div>
+        </div>
+        <div class="compress-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 3 -->
+        <div class="compress-card cl-3">
+          <div class="compress-head">
+            <span class="compress-num">3</span>
+            <span class="compress-name">微压缩</span>
+            <span class="compress-en">Microcompact</span>
+          </div>
+          <div class="compress-body">
+            <div class="compress-detail">
+              <span><span class="detail-label">触发:</span> 按工具类型的时间窗口</span>
+              <span><span class="detail-label">策略:</span> 工具结果按类型批量清理</span>
+              <span><span class="detail-label">保留:</span> 最近使用的工具结果</span>
+            </div>
+          </div>
+        </div>
+        <div class="compress-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 4 -->
+        <div class="compress-card cl-4">
+          <div class="compress-head">
+            <span class="compress-num">4</span>
+            <span class="compress-name">上下文折叠</span>
+            <span class="compress-en">Context Collapse</span>
+          </div>
+          <div class="compress-body">
+            <div class="compress-detail">
+              <span><span class="detail-label">触发:</span> Token 接近阈值</span>
+              <span><span class="detail-label">策略:</span> 读时投影，延迟物化</span>
+              <span><span class="detail-label">保留:</span> 摘要替代原文</span>
+            </div>
+          </div>
+        </div>
+        <div class="compress-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 5 -->
+        <div class="compress-card cl-5">
+          <div class="compress-head">
+            <span class="compress-num">5</span>
+            <span class="compress-name">自动压缩</span>
+            <span class="compress-en">Auto Compaction</span>
+          </div>
+          <div class="compress-body">
+            <div class="compress-detail">
+              <span><span class="detail-label">触发:</span> Token 超过阈值（如 80%）</span>
+              <span><span class="detail-label">策略:</span> 分叉子 Agent 生成摘要，替换历史</span>
+              <span><span class="detail-label">保留:</span> 完整摘要 + 最近对话</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cache-aware -->
+      <div class="insight-box" style="margin-top:24px;">
+        <div class="insight-title">🎯 Cache-aware Compression</div>
+        <div class="insight-desc">
+          压缩策略感知 Prompt 缓存机制，在执行压缩操作时避免破坏已缓存的前缀内容。这确保了压缩后的对话仍然能命中 API 的 Prompt 缓存，避免因压缩导致的额外 Token 成本。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5. Token估算与成本管理 ==================== -->
+  <section class="content-section fade-section" id="sec-token">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">📊</span>
+          Token估算与成本管理
+        </h2>
+        <p>多层次 Token 计数策略与成本追踪体系</p>
+      </div>
+
+      <!-- Token Tree -->
+      <div class="token-tree">
+        <div class="token-tree-title">Token 计数策略</div>
+        <div class="tree-node tree-root">精确计数（API 返回）</div>
+        <div class="tree-node"><span class="tree-prefix">  └── </span><span class="tree-label">usage.input_tokens</span> / <span class="tree-label">output_tokens</span></div>
+        <br>
+        <div class="tree-node tree-root">本地估算（无 API 调用）</div>
+        <div class="tree-node"><span class="tree-prefix">  ├── </span><span class="tree-desc">JSON 序列化 × 系数</span></div>
+        <div class="tree-node"><span class="tree-prefix">  ├── </span><span class="tree-desc">Thinking block 检测</span></div>
+        <div class="tree-node"><span class="tree-prefix">  └── </span><span class="tree-desc">Tool search 字段剥离</span></div>
+        <br>
+        <div class="tree-node tree-root">多供应商支持</div>
+        <div class="tree-node"><span class="tree-prefix">  ├── </span><span class="tree-label">Anthropic SDK</span><span class="tree-desc"> 计数</span></div>
+        <div class="tree-node"><span class="tree-prefix">  ├── </span><span class="tree-label">AWS Bedrock</span><span class="tree-desc"> countTokens()</span></div>
+        <div class="tree-node"><span class="tree-prefix">  └── </span><span class="tree-label">Google Vertex</span></div>
+      </div>
+
+      <!-- Cost Tracking -->
+      <div class="token-tree">
+        <div class="token-tree-title">成本追踪字段</div>
+        <div class="tree-node"><span class="tree-prefix">📥 </span><span class="tree-label">inputTokens</span><span class="tree-desc"> — 输入 Token 数</span></div>
+        <div class="tree-node"><span class="tree-prefix">📤 </span><span class="tree-label">outputTokens</span><span class="tree-desc"> — 输出 Token 数</span></div>
+        <div class="tree-node"><span class="tree-prefix">💾 </span><span class="tree-label">cacheCreationInputTokens</span><span class="tree-desc"> — 缓存创建消耗</span></div>
+        <div class="tree-node"><span class="tree-prefix">⚡ </span><span class="tree-label">cacheReadInputTokens</span><span class="tree-desc"> — 缓存命中节省</span></div>
+        <div class="tree-node"><span class="tree-prefix">💰 </span><span class="tree-label">totalCostUsd</span><span class="tree-desc"> — 总成本（美元）</span></div>
+      </div>
+
+      <!-- Rate Limit Cards -->
+      <div class="rate-cards">
+        <div class="rate-card">
+          <div class="rate-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">⏰</div>
+          <div class="rate-info">
+            <div class="rate-name">5小时限额</div>
+            <div class="rate-desc">90% 用量时触发警告，提醒用户注意使用频率</div>
+          </div>
+          <span class="rate-badge" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">90% 警告</span>
+        </div>
+        <div class="rate-card">
+          <div class="rate-icon" style="background:rgba(255,123,114,0.12);color:var(--accent-red);">📅</div>
+          <div class="rate-info">
+            <div class="rate-name">7天限额</div>
+            <div class="rate-desc">多级警告机制：75% → 50% → 25% 剩余时逐级告警</div>
+          </div>
+          <span class="rate-badge" style="background:rgba(255,123,114,0.12);color:var(--accent-red);">多级警告</span>
+        </div>
+        <div class="rate-card">
+          <div class="rate-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">🚦</div>
+          <div class="rate-info">
+            <div class="rate-name">QuotaStatus 状态机</div>
+            <div class="rate-desc"><code>allowed</code> → <code>allowed_warning</code> → <code>rejected</code> 三态转换</div>
+          </div>
+          <span class="rate-badge" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">三态控制</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 6. Prompt缓存优化策略 ==================== -->
+  <section class="content-section fade-section" id="sec-cache">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(247,120,186,0.12);color:var(--accent-pink);">💎</span>
+          Prompt缓存优化策略
+        </h2>
+        <p>通过稳定化技术最大化 Prompt 缓存命中率，降低 API 成本</p>
+      </div>
+
+      <div class="technique-list">
+        <div class="technique-item">
+          <div class="technique-name">🔧 工具池排序稳定化</div>
+          <div class="technique-desc">
+            确保工具描述的顺序在每次请求中保持一致，避免因顺序变化导致缓存键不同。工具池在初始化时排序，后续请求复用相同顺序，确保系统提示的前缀部分始终一致。
+          </div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">📌 系统提示稳定性</div>
+          <div class="technique-desc">
+            最小化动态内容在系统提示中的位置变化。静态内容（核心指令、工具描述）放在前部，动态内容（环境状态、会话信息）放在后部，确保前缀的缓存可复用性。
+          </div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">🗜️ 压缩缓存感知</div>
+          <div class="technique-desc">
+            上下文压缩时保留前缀不变，确保压缩操作不会破坏已有的缓存命中。压缩算法从后往前删除内容，保持与缓存兼容的前缀完整性。
+          </div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">🔀 Fork模式优化</div>
+          <div class="technique-desc">
+            子 Agent 继承父 Agent 的上下文前缀，复用父级的缓存。这在多 Agent 协作场景中显著减少重复的缓存创建成本，每个子 Agent 只需要缓存增量部分。
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 7. 投机执行 ==================== -->
+  <section class="content-section fade-section" id="sec-speculation">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(245,213,71,0.12);color:var(--accent-yellow);">⚡</span>
+          投机执行
+        </h2>
+        <p>Speculation 机制：预测用户行为，提前准备 API 调用上下文</p>
+      </div>
+
+      <div class="speculation-flow">
+        <div class="spec-trigger">
+          <span class="spec-trigger-icon">⌨️</span>
+          <span>用户正在输入...</span>
+        </div>
+        <div class="spec-branches">
+          <div class="spec-branch">
+            <span class="spec-branch-icon">🔮</span>
+            <span><strong>预测：</strong>用户可能提交当前输入</span>
+          </div>
+          <div class="spec-branch">
+            <span class="spec-branch-icon">🚀</span>
+            <span><strong>预启动：</strong>准备 API 调用上下文（系统提示、历史消息）</span>
+          </div>
+          <div class="spec-branch">
+            <span class="spec-branch-icon">⚡</span>
+            <span><strong>用户提交时：</strong>立即发送请求（省去上下文准备时间）</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:24px;">
+        <div class="insight-title">🎯 延迟优化效果</div>
+        <div class="insight-desc">
+          通过投机执行，用户提交消息到 API 请求发出的延迟从「上下文组装时间 + 网络延迟」降低为仅「网络延迟」。在复杂项目中，上下文组装可能涉及文件读取、CLAUDE.md 解析、工具列表构建等耗时操作，投机执行将这些操作与用户输入并行化。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 8. 结构化输出与验证 ==================== -->
+  <section class="content-section fade-section" id="sec-validation">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🛡️</span>
+          结构化输出与验证
+        </h2>
+        <p>Zod Schema 双重验证，编译时类型推断 + 运行时解析验证</p>
+      </div>
+
+      <!-- Dual Validation -->
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-icon">🔷</div>
+          <div class="info-card-name">编译时验证</div>
+          <div class="info-card-en">Compile-time Type Inference</div>
+          <div class="info-card-desc">TypeScript 类型推断，基于 Zod Schema 自动推导类型。开发阶段即可捕获类型不匹配错误，提供完整的 IDE 自动补全支持。</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">🔶</div>
+          <div class="info-card-name">运行时验证</div>
+          <div class="info-card-en">Runtime Zod parse()</div>
+          <div class="info-card-desc">Zod <code>parse()</code> 在运行时验证数据结构，捕获 API 返回的异常数据。验证失败时生成详细错误信息，驱动模型自动重试。</div>
+        </div>
+      </div>
+
+      <!-- Validation Pipeline -->
+      <div class="validation-flow" style="margin-top:20px;">
+        <div class="validation-stages">
+          <div class="val-stage">
+            <div class="val-stage-icon">🔧</div>
+            <div class="val-stage-name">工具返回</div>
+          </div>
+          <div class="val-arrow">→</div>
+          <div class="val-stage">
+            <div class="val-stage-icon">🔍</div>
+            <div class="val-stage-name">Zod Schema验证</div>
+          </div>
+          <div class="val-arrow">→</div>
+          <div class="val-stage">
+            <div class="val-stage-icon">✅</div>
+            <div class="val-stage-name">类型安全结果</div>
+          </div>
+          <div class="val-arrow">→</div>
+          <div class="val-stage">
+            <div class="val-stage-icon">🤖</div>
+            <div class="val-stage-name">模型反馈</div>
+          </div>
+        </div>
+        <div class="val-error-branch">
+          <span class="val-error-icon">⚠️</span>
+          <span>验证失败路径：错误消息 → 模型接收错误详情 → 自动重试（调整参数或换工具）</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 9. 状态管理架构 ==================== -->
+  <section class="content-section fade-section" id="sec-state">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">📦</span>
+          状态管理架构
+        </h2>
+        <p>AppState 采用 Zustand-like 模式，适配终端环境的轻量级状态管理</p>
+      </div>
+
+      <div class="state-grid">
+        <div class="state-card">
+          <div class="state-card-icon">🔄</div>
+          <div class="state-card-name">getAppState()</div>
+          <div class="state-card-desc">全局状态读取，任意组件可访问完整状态树</div>
+        </div>
+        <div class="state-card">
+          <div class="state-card-icon">✏️</div>
+          <div class="state-card-name">setAppState()</div>
+          <div class="state-card-desc">不可变更新模式，确保状态变更可追溯、可预测</div>
+        </div>
+        <div class="state-card">
+          <div class="state-card-icon">⚛️</div>
+          <div class="state-card-name">React Context</div>
+          <div class="state-card-desc">与 Ink 终端 React 集成，选择性订阅避免不必要的重渲染</div>
+        </div>
+        <div class="state-card">
+          <div class="state-card-icon">🧊</div>
+          <div class="state-card-name">Immutable Updates</div>
+          <div class="state-card-desc">每次状态变更生成新对象引用，支持浅比较优化</div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:24px;">
+        <div class="insight-title">❓ 为什么自定义而非使用 Redux/Zustand？</div>
+        <div class="insight-desc">
+          Claude Code 运行在终端环境（Ink + React），不是浏览器 DOM。标准状态管理库假设浏览器环境，而终端 UI 有不同的渲染模型和生命周期。自定义实现可以：① 避免不必要的依赖；② 适配 Ink 的渲染模型；③ 支持 CLI 特有的状态需求（如进程状态、工具执行状态）；④ 保持与 AsyncGenerator 管道的紧密集成。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 10. 设计评析 ==================== -->
+  <section class="content-section fade-section" id="sec-eval">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">⚖️</span>
+          设计评析
+        </h2>
+        <p>Prompt 工程与上下文管理的巧妙之处与潜在问题</p>
+      </div>
+
+      <div class="eval-grid">
+        <!-- Pros -->
+        <div class="eval-card eval-pros">
+          <div class="eval-title">✅ 巧妙之处</div>
+          <ul class="eval-list">
+            <li>
+              <span class="eval-icon">🔄</span>
+              <span><strong>AsyncGenerator 管道</strong>：实现零依赖流式处理，天然支持背压控制和取消传播</span>
+            </li>
+            <li>
+              <span class="eval-icon">🗜️</span>
+              <span><strong>五层压缩策略</strong>：从工具结果到完整历史的渐进压缩，平衡信息保留与 Token 效率</span>
+            </li>
+            <li>
+              <span class="eval-icon">📝</span>
+              <span><strong>System Prompt as Policy</strong>：配置即行为，所有控制通过提示词实现，极大降低了修改成本</span>
+            </li>
+            <li>
+              <span class="eval-icon">💎</span>
+              <span><strong>Prompt 缓存稳定性</strong>：通过工具排序和前缀稳定化，有效减少 API 缓存未命中</span>
+            </li>
+            <li>
+              <span class="eval-icon">🛡️</span>
+              <span><strong>Zod 双重验证</strong>：编译时 + 运行时双保险，确保工具输出的完整类型安全</span>
+            </li>
+            <li>
+              <span class="eval-icon">⚡</span>
+              <span><strong>投机执行</strong>：预测用户行为并行准备上下文，显著提升交互响应速度</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Cons -->
+        <div class="eval-card eval-cons">
+          <div class="eval-title">⚠️ 潜在问题</div>
+          <ul class="eval-list">
+            <li>
+              <span class="eval-icon">🗜️</span>
+              <span><strong>压缩信息丢失</strong>：多层压缩可能丢失重要上下文信息，影响长对话中模型的回答质量</span>
+            </li>
+            <li>
+              <span class="eval-icon">📊</span>
+              <span><strong>Token 估算精度</strong>：本地估算在不同模型间存在精度差异，可能导致压缩过早或过晚触发</span>
+            </li>
+            <li>
+              <span class="eval-icon">📏</span>
+              <span><strong>系统提示过长</strong>：43+ 工具描述 + 多层配置使系统提示体积庞大，影响推理效率和成本</span>
+            </li>
+            <li>
+              <span class="eval-icon">🔀</span>
+              <span><strong>CLAUDE.md 合并冲突</strong>：三级记忆文件的合并可能产生语义冲突，缺乏显式的冲突检测机制</span>
+            </li>
+            <li>
+              <span class="eval-icon">📈</span>
+              <span><strong>动态上下文增长</strong>：运行时注入的动态上下文（文件快照、环境状态）增长难以精确控制</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <p><span class="footer-brand">Claude Code v2.1.88</span> 源码架构分析</p>
+      <p>仅供研究学习使用</p>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ==================== JavaScript ==================== -->
+<script>
+(function() {
+  'use strict';
+
+  /* --- Sidebar Toggle (mobile) --- */
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function() {
+      sidebar.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+      if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== toggle) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+
+  /* --- Active TOC Highlight --- */
+  function initTocHighlight() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    var sections = [];
+    tocLinks.forEach(function(link) {
+      var id = link.getAttribute('href').replace('#', '');
+      var el = document.getElementById(id);
+      if (el) sections.push({ id: id, el: el, link: link });
+    });
+
+    function updateActive() {
+      var scrollY = window.scrollY + 120;
+      var current = null;
+      for (var i = sections.length - 1; i >= 0; i--) {
+        if (sections[i].el.offsetTop <= scrollY) {
+          current = sections[i];
+          break;
+        }
+      }
+      tocLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+    }
+
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(function() { updateActive(); ticking = false; });
+        ticking = true;
+      }
+    });
+    updateActive();
+  }
+
+  /* --- Scroll Fade-In Observer --- */
+  function initScrollObserver() {
+    var sections = document.querySelectorAll('.fade-section');
+    if (!('IntersectionObserver' in window)) {
+      sections.forEach(function(s) { s.classList.add('visible'); });
+      return;
+    }
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  /* --- Smooth scroll for sidebar links (close sidebar on mobile) --- */
+  function initSidebarLinks() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    tocLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 1024 && sidebar) {
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+  }
+
+  /* --- Init --- */
+  document.addEventListener('DOMContentLoaded', function() {
+    initScrollObserver();
+    initTocHighlight();
+    initSidebarLinks();
+  });
+})();
+</script>
+</body>
+</html>

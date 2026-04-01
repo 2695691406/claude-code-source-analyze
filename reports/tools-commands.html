@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工具与命令系统分析 - Claude Code 源码分析</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2333;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--blue:#58a6ff;--purple:#bc8cff;--green:#7ee787;--orange:#f0883e;--red:#f85149;--pink:#f778ba}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.7;overflow-x:hidden}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.top-nav{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px}
+.top-nav a{font-size:14px;display:flex;align-items:center;gap:6px}
+.top-nav h1{font-size:18px;background:linear-gradient(90deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-left:auto}
+.layout{display:flex;max-width:1400px;margin:0 auto;gap:0}
+.sidebar{width:240px;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;padding:20px 16px;border-right:1px solid var(--border);flex-shrink:0}
+.sidebar a{display:block;padding:6px 12px;font-size:13px;color:var(--text2);border-radius:6px;margin-bottom:2px;transition:.2s}
+.sidebar a:hover,.sidebar a.active{color:var(--blue);background:rgba(88,166,255,.08);text-decoration:none}
+.main{flex:1;padding:32px 40px;min-width:0}
+.section{margin-bottom:48px;animation:fadeUp .5s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+h2{font-size:24px;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid transparent;border-image:linear-gradient(90deg,var(--blue),var(--purple)) 1;display:flex;align-items:center;gap:10px}
+h2 .icon{font-size:28px}
+h3{font-size:18px;color:var(--blue);margin:16px 0 10px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;transition:.3s}
+.card:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:0 4px 20px rgba(88,166,255,.1)}
+.card h4{color:var(--purple);margin-bottom:8px;font-size:16px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;margin:2px}
+.badge-blue{background:rgba(88,166,255,.15);color:var(--blue)}
+.badge-purple{background:rgba(188,140,255,.15);color:var(--purple)}
+.badge-green{background:rgba(126,231,135,.15);color:var(--green)}
+.badge-orange{background:rgba(240,136,62,.15);color:var(--orange)}
+.badge-red{background:rgba(248,81,73,.15);color:var(--red)}
+.badge-pink{background:rgba(247,120,186,.15);color:var(--pink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.tool-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;transition:.3s;cursor:default}
+.tool-card:hover{border-color:var(--purple);box-shadow:0 0 15px rgba(188,140,255,.08)}
+.tool-card .name{font-weight:700;color:var(--green);font-size:15px;margin-bottom:4px}
+.tool-card .desc{font-size:13px;color:var(--text2)}
+.pipeline{display:flex;flex-direction:column;gap:0;position:relative}
+.pipeline::before{content:'';position:absolute;left:24px;top:0;bottom:0;width:2px;background:linear-gradient(var(--blue),var(--purple),var(--green))}
+.pipe-step{display:flex;gap:16px;padding:14px 0;position:relative}
+.pipe-num{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0;z-index:1}
+.pipe-content{flex:1;padding-top:8px}
+.pipe-content strong{color:var(--blue)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.tab{padding:6px 16px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text2);transition:.2s;user-select:none}
+.tab:hover{border-color:var(--blue);color:var(--blue)}
+.tab.active{background:linear-gradient(135deg,rgba(88,166,255,.2),rgba(188,140,255,.2));border-color:var(--blue);color:var(--blue);font-weight:600}
+.tab-panel{display:none;animation:fadeUp .3s ease}
+.tab-panel.active{display:block}
+.cmd-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.cmd-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;transition:.2s}
+.cmd-item:hover{border-color:var(--green);transform:translateX(4px)}
+.cmd-item code{color:var(--green);font-weight:600;font-family:'SF Mono',SFMono-Regular,Consolas,monospace}
+.compare-table{width:100%;border-collapse:collapse;margin:12px 0}
+.compare-table th,.compare-table td{padding:10px 14px;border:1px solid var(--border);text-align:left;font-size:14px}
+.compare-table th{background:var(--bg3);color:var(--purple);font-weight:600}
+.compare-table td{background:var(--bg2)}
+.check{color:var(--green)}
+.cross{color:var(--red)}
+.hierarchy{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin:16px 0;justify-content:center}
+.h-node{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:2px solid var(--blue);border-radius:10px;padding:10px 20px;text-align:center;font-weight:600;font-size:14px}
+.h-arrow{color:var(--purple);font-size:24px;padding:0 8px}
+.danger-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.danger-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:14px;transition:.3s}
+.danger-card:hover{border-left-color:var(--orange);box-shadow:0 0 12px rgba(248,81,73,.1)}
+.danger-card .title{color:var(--orange);font-weight:700;margin-bottom:4px;font-size:14px}
+.danger-card .patterns{font-size:12px;color:var(--text2);font-family:'SF Mono',SFMono-Regular,Consolas,monospace}
+.eval-section{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.eval-good{border-left:3px solid var(--green)}
+.eval-bad{border-left:3px solid var(--orange)}
+.eval-good h4{color:var(--green) !important}
+.eval-bad h4{color:var(--orange) !important}
+ul{padding-left:20px}li{margin-bottom:6px;font-size:14px}
+.mcp-arch{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:16px 0}
+.mcp-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;transition:.3s}
+.mcp-box:hover{border-color:var(--purple);transform:scale(1.02)}
+.mcp-box .label{font-size:12px;color:var(--text2);margin-bottom:6px}
+.mcp-box .value{font-size:14px;font-weight:600;color:var(--blue)}
+.feature-compare{margin:16px 0}
+.code-block{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:13px;overflow-x:auto;line-height:1.8;margin:12px 0}
+.code-block .kw{color:var(--purple)}
+.code-block .fn{color:var(--blue)}
+.code-block .str{color:var(--green)}
+.code-block .cm{color:var(--text2)}
+.cat-count{font-size:13px;color:var(--text2);font-weight:400;margin-left:6px}
+.section-intro{font-size:15px;color:var(--text2);margin-bottom:20px;line-height:1.8}
+@media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;position:relative;height:auto;border-right:none;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px;padding:12px}.sidebar a{white-space:nowrap}.main{padding:20px 16px}.grid,.grid-2{grid-template-columns:1fr}.eval-section{grid-template-columns:1fr}.hierarchy{flex-direction:column}.h-arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<nav class="top-nav">
+<a href="index.html">← 返回目录</a>
+<h1>🔧 工具与命令系统分析</h1>
+</nav>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+<a href="#tool-abstraction">1. 工具抽象层设计</a>
+<a href="#tool-categories">2. 43+工具分类</a>
+<a href="#mcp-integration">3. MCP协议集成</a>
+<a href="#commands">4. 86+命令分类</a>
+<a href="#permission-pipeline">5. 权限决策流水线</a>
+<a href="#bash-security">6. Bash安全检测</a>
+<a href="#feature-gate">7. Feature Gate机制</a>
+<a href="#evaluation">8. 设计评析</a>
+</aside>
+<main class="main">
+
+<!-- Section 1: Tool Abstraction -->
+<section class="section" id="tool-abstraction">
+<h2><span class="icon">🧩</span> 工具抽象层设计</h2>
+<p class="section-intro">Claude Code 定义了一套统一的工具接口（Tool Interface），所有工具——无论是内置工具、MCP外部工具还是自定义技能——都遵循同一套协议，实现了高度可扩展的工具生态。</p>
+
+<div class="card">
+<h4>统一工具接口（Unified Tool Interface）</h4>
+<div class="code-block">
+<span class="kw">interface</span> <span class="fn">Tool</span> {<br>
+&nbsp;&nbsp;<span class="cm">// 身份</span><br>
+&nbsp;&nbsp;<span class="fn">name</span>: <span class="str">string</span>;<br>
+&nbsp;&nbsp;<span class="fn">description</span>: <span class="str">string</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// Schema — 编译时TypeScript + 运行时Zod验证</span><br>
+&nbsp;&nbsp;<span class="fn">inputSchema</span>: <span class="str">ZodSchema</span>;<br>
+&nbsp;&nbsp;<span class="fn">outputSchema</span>: <span class="str">ZodSchema</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 行为谓词</span><br>
+&nbsp;&nbsp;<span class="fn">isReadOnly</span>(): <span class="str">boolean</span>; &nbsp;<span class="cm">// 默认 false (Fail-Closed)</span><br>
+&nbsp;&nbsp;<span class="fn">isConcurrencySafe</span>(): <span class="str">boolean</span>; &nbsp;<span class="cm">// 默认 false (Fail-Closed)</span><br><br>
+&nbsp;&nbsp;<span class="cm">// 执行</span><br>
+&nbsp;&nbsp;<span class="fn">call</span>(input): <span class="str">Promise&lt;ToolResult&gt;</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 权限</span><br>
+&nbsp;&nbsp;<span class="fn">userFacingPermissions</span>(): <span class="str">Permission[]</span>;<br>
+&nbsp;&nbsp;<span class="fn">canUse</span>(): <span class="str">boolean</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 渲染</span><br>
+&nbsp;&nbsp;<span class="fn">renderToolUseMessage</span>(): <span class="str">ReactNode</span>;<br>
+&nbsp;&nbsp;<span class="fn">renderResultMessage</span>(): <span class="str">ReactNode</span>;<br>
+}
+</div>
+</div>
+
+<div class="card">
+<h4>默认安全策略：Fail-Closed</h4>
+<p style="font-size:14px;color:var(--text2);margin-bottom:12px">所有工具默认被视为<strong style="color:var(--red)">非并发安全</strong>、<strong style="color:var(--red)">非只读</strong>。只有显式声明安全的工具才能并发执行或跳过权限检查。</p>
+<div style="display:flex;gap:12px;flex-wrap:wrap">
+<span class="badge badge-red">isReadOnly() → false</span>
+<span class="badge badge-red">isConcurrencySafe() → false</span>
+<span class="badge badge-green">显式声明 → 安全</span>
+</div>
+</div>
+
+<div class="card">
+<h4>工具扩展层级（Extension Hierarchy）</h4>
+<div class="hierarchy">
+<div class="h-node">🔧 内置工具<br><small style="color:var(--text2)">43+ 核心工具</small></div>
+<div class="h-arrow">→</div>
+<div class="h-node">🔌 MCP工具<br><small style="color:var(--text2)">动态加载</small></div>
+<div class="h-arrow">→</div>
+<div class="h-node">⚡ Skill工具<br><small style="color:var(--text2)">项目级</small></div>
+<div class="h-arrow">→</div>
+<div class="h-node">🧩 Plugin工具<br><small style="color:var(--text2)">第三方扩展</small></div>
+</div>
+</div>
+</section>
+
+<!-- Section 2: 43+ Tools -->
+<section class="section" id="tool-categories">
+<h2><span class="icon">🗂️</span> 43+ 工具分类展示</h2>
+<p class="section-intro">Claude Code 内置了 43+ 工具，覆盖文件操作、代码导航、Shell执行、多Agent协作、任务管理等 14 个类别，形成完整的开发辅助工具链。</p>
+
+<div class="grid">
+<!-- File Operations -->
+<div class="tool-card" style="border-top:3px solid var(--blue)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">📁 文件操作</h3><span class="badge badge-blue">5 工具</span>
+</div>
+<div class="tool-entry"><span class="name">Read</span><span class="desc"> — 文件/图片/PDF/Notebook读取，类型自动检测，行范围支持</span></div>
+<div class="tool-entry"><span class="name">Write</span><span class="desc"> — 创建/覆写文件，自动创建父目录</span></div>
+<div class="tool-entry"><span class="name">Edit</span><span class="desc"> — 查找替换 或 行范围编辑</span></div>
+<div class="tool-entry"><span class="name">Glob</span><span class="desc"> — 模式匹配，.gitignore感知</span></div>
+<div class="tool-entry"><span class="name">Grep</span><span class="desc"> — Ripgrep正则搜索，上下文行支持</span></div>
+</div>
+
+<!-- Code Navigation -->
+<div class="tool-card" style="border-top:3px solid var(--purple)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">🧭 代码导航</h3><span class="badge badge-purple">1 工具</span>
+</div>
+<div class="tool-entry"><span class="name">LSP</span><span class="desc"> — 语言智能（定义跳转/引用查找/符号搜索）</span></div>
+</div>
+
+<!-- Shell -->
+<div class="tool-card" style="border-top:3px solid var(--green)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">💻 Shell执行</h3><span class="badge badge-green">3 工具</span>
+</div>
+<div class="tool-entry"><span class="name">Bash</span><span class="desc"> — 命令执行，危险检测，超时控制</span></div>
+<div class="tool-entry"><span class="name">PowerShell</span><span class="desc"> — Windows Shell（平台条件）</span></div>
+<div class="tool-entry"><span class="name">REPL</span><span class="desc"> — JS虚拟机沙箱，状态持久化</span></div>
+</div>
+
+<!-- Planning -->
+<div class="tool-card" style="border-top:3px solid var(--orange)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">📐 规划与设计</h3><span class="badge badge-orange">2 工具</span>
+</div>
+<div class="tool-entry"><span class="name">EnterPlanMode</span><span class="desc"> — 进入规划模式（禁用写入工具）</span></div>
+<div class="tool-entry"><span class="name">ExitPlanMode</span><span class="desc"> — 退出规划模式</span></div>
+</div>
+
+<!-- Worktree -->
+<div class="tool-card" style="border-top:3px solid var(--pink)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">🌳 隔离与Worktree</h3><span class="badge badge-pink">2 工具</span>
+</div>
+<div class="tool-entry"><span class="name">EnterWorktree</span><span class="desc"> — 进入Git Worktree隔离环境</span></div>
+<div class="tool-entry"><span class="name">ExitWorktree</span><span class="desc"> — 退出隔离环境</span></div>
+</div>
+
+<!-- Multi-Agent -->
+<div class="tool-card" style="border-top:3px solid var(--blue)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">🤖 多Agent与通信</h3><span class="badge badge-blue">5 工具</span>
+</div>
+<div class="tool-entry"><span class="name">Agent</span><span class="desc"> — 子Agent生成(sync/async/remote/teammate/fork)</span></div>
+<div class="tool-entry"><span class="name">SendMessage</span><span class="desc"> — Agent间消息(点对点/广播/UDS/Bridge)</span></div>
+<div class="tool-entry"><span class="name">TeamCreate</span><span class="desc"> — 创建Swarm团队</span></div>
+<div class="tool-entry"><span class="name">TeamDelete</span><span class="desc"> — 删除团队</span></div>
+<div class="tool-entry"><span class="name">Skill</span><span class="desc"> — 调用项目技能</span></div>
+</div>
+
+<!-- Task Management -->
+<div class="tool-card" style="border-top:3px solid var(--purple)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">📋 任务管理</h3><span class="badge badge-purple">7 工具</span>
+</div>
+<div class="tool-entry"><span class="name">TaskCreate/Get/List/Update/Output/Stop</span><span class="desc"> — v2任务系统</span></div>
+<div class="tool-entry"><span class="name">TodoWrite</span><span class="desc"> — 待办事项管理</span></div>
+</div>
+
+<!-- User Interaction -->
+<div class="tool-card" style="border-top:3px solid var(--green)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">💬 用户交互</h3><span class="badge badge-green">2 工具</span>
+</div>
+<div class="tool-entry"><span class="name">AskUserQuestion</span><span class="desc"> — 多选提示</span></div>
+<div class="tool-entry"><span class="name">SendUserMessage</span><span class="desc"> — 发送消息给用户</span></div>
+</div>
+
+<!-- Web -->
+<div class="tool-card" style="border-top:3px solid var(--orange)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">�� Web访问</h3><span class="badge badge-orange">2 工具</span>
+</div>
+<div class="tool-entry"><span class="name">WebFetch</span><span class="desc"> — URL内容获取</span></div>
+<div class="tool-entry"><span class="name">WebSearch</span><span class="desc"> — AI搜索</span></div>
+</div>
+
+<!-- Notebook -->
+<div class="tool-card" style="border-top:3px solid var(--pink)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">📓 Notebook编辑</h3><span class="badge badge-pink">1 工具</span>
+</div>
+<div class="tool-entry"><span class="name">NotebookEdit</span><span class="desc"> — Jupyter Notebook编辑</span></div>
+</div>
+
+<!-- Config -->
+<div class="tool-card" style="border-top:3px solid var(--blue)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">⚙️ 配置</h3><span class="badge badge-blue">1 工具</span>
+</div>
+<div class="tool-entry"><span class="name">Config</span><span class="desc"> — 配置管理</span></div>
+</div>
+
+<!-- MCP -->
+<div class="tool-card" style="border-top:3px solid var(--purple)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">🔌 MCP协议</h3><span class="badge badge-purple">4 工具</span>
+</div>
+<div class="tool-entry"><span class="name">ListMcpResources</span><span class="desc"> — 列出MCP资源</span></div>
+<div class="tool-entry"><span class="name">ReadMcpResource</span><span class="desc"> — 读取MCP资源</span></div>
+<div class="tool-entry"><span class="name">MCP</span><span class="desc"> — MCP工具调用</span></div>
+<div class="tool-entry"><span class="name">McpAuthTool</span><span class="desc"> — MCP认证</span></div>
+</div>
+
+<!-- Scheduling -->
+<div class="tool-card" style="border-top:3px solid var(--green)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">⏰ 调度与触发</h3><span class="badge badge-green">4 工具</span>
+</div>
+<div class="tool-entry"><span class="name">CronCreate/Delete/List</span><span class="desc"> — 定时任务管理</span></div>
+<div class="tool-entry"><span class="name">RemoteTrigger</span><span class="desc"> — 远程触发</span></div>
+</div>
+
+<!-- Utilities -->
+<div class="tool-card" style="border-top:3px solid var(--orange)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin:0">🛠️ 实用工具</h3><span class="badge badge-orange">3 工具</span>
+</div>
+<div class="tool-entry"><span class="name">ToolSearch</span><span class="desc"> — 工具搜索（延迟加载）</span></div>
+<div class="tool-entry"><span class="name">Sleep</span><span class="desc"> — 等待</span></div>
+<div class="tool-entry"><span class="name">StructuredOutput</span><span class="desc"> — 结构化输出</span></div>
+</div>
+</div>
+</section>
+
+<!-- Section 3: MCP Integration -->
+<section class="section" id="mcp-integration">
+<h2><span class="icon">🔌</span> MCP协议集成</h2>
+<p class="section-intro">Model Context Protocol (MCP) 是 Claude Code 实现工具生态开放的核心协议。通过统一的传输层抽象、Schema双向转换和安全认证机制，实现了外部工具的无缝集成。</p>
+
+<div class="card">
+<h4>MCP集成架构</h4>
+<div class="mcp-arch">
+<div class="mcp-box">
+<div class="label">传输协议</div>
+<div class="value">5 种</div>
+<div style="font-size:12px;color:var(--text2);margin-top:6px">stdio · SSE · WebSocket<br>InProcess · SDK HTTP</div>
+</div>
+<div class="mcp-box">
+<div class="label">连接管理</div>
+<div class="value">MCPConnectionManager</div>
+<div style="font-size:12px;color:var(--text2);margin-top:6px">React Context<br>生命周期管理</div>
+</div>
+<div class="mcp-box">
+<div class="label">Schema转换</div>
+<div class="value">双向转换</div>
+<div style="font-size:12px;color:var(--text2);margin-top:6px">MCP Schema ↔<br>Claude Tool Schema</div>
+</div>
+<div class="mcp-box">
+<div class="label">认证机制</div>
+<div class="value">OAuth/PKCE</div>
+<div style="font-size:12px;color:var(--text2);margin-top:6px">并发保护<br>锁文件机制</div>
+</div>
+<div class="mcp-box">
+<div class="label">配置合并</div>
+<div class="value">静态+动态</div>
+<div style="font-size:12px;color:var(--text2);margin-top:6px">多层配置<br>Merge策略</div>
+</div>
+<div class="mcp-box">
+<div class="label">跨Agent共享</div>
+<div class="value">继承连接</div>
+<div style="font-size:12px;color:var(--text2);margin-top:6px">子Agent继承<br>父Agent MCP</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Section 4: 86+ Commands -->
+<section class="section" id="commands">
+<h2><span class="icon">⌨️</span> 86+ 命令分类展示</h2>
+<p class="section-intro">Claude Code 提供了 86+ 个斜杠命令，涵盖会话管理、模型配置、开发工具、代码审查等 14 个类别。命令系统支持 4 种类型和 6 种注册来源。</p>
+
+<div class="card" style="margin-bottom:20px">
+<h4>命令系统设计</h4>
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin:12px 0">
+<div>
+<strong style="color:var(--blue)">4 种类型</strong>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+<span class="badge badge-blue">local</span>
+<span class="badge badge-purple">local-jsx</span>
+<span class="badge badge-green">prompt</span>
+<span class="badge badge-orange">proactive</span>
+</div>
+</div>
+<div>
+<strong style="color:var(--blue)">核心属性</strong>
+<div style="font-size:13px;color:var(--text2);margin-top:6px">name · description · aliases · arguments · immediate · enabled · hidden</div>
+</div>
+<div>
+<strong style="color:var(--blue)">6 种注册来源</strong>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+<span class="badge badge-blue">core</span>
+<span class="badge badge-purple">root files</span>
+<span class="badge badge-green">skills</span>
+<span class="badge badge-orange">plugins</span>
+<span class="badge badge-pink">workflows</span>
+<span class="badge badge-red">MCP</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="tabs" id="cmd-tabs">
+<div class="tab active" data-tab="cmd-1">1. 会话与上下文</div>
+<div class="tab" data-tab="cmd-2">2. AI模型与配置</div>
+<div class="tab" data-tab="cmd-3">3. 会话信息</div>
+<div class="tab" data-tab="cmd-4">4. 设置与配置</div>
+<div class="tab" data-tab="cmd-5">5. 认证与账户</div>
+<div class="tab" data-tab="cmd-6">6. 订阅与限额</div>
+<div class="tab" data-tab="cmd-7">7. 集成与安装</div>
+<div class="tab" data-tab="cmd-8">8. 开发工具</div>
+<div class="tab" data-tab="cmd-9">9. 代码审查</div>
+<div class="tab" data-tab="cmd-10">10. 沟通与工具</div>
+<div class="tab" data-tab="cmd-11">11. 远程与协作</div>
+<div class="tab" data-tab="cmd-12">12. 项目设置</div>
+<div class="tab" data-tab="cmd-13">13. 发布更新</div>
+<div class="tab" data-tab="cmd-14">14. 其他</div>
+</div>
+
+<div id="cmd-1" class="tab-panel active">
+<h3>会话与上下文 <span class="cat-count">(10 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/add-dir</code> 添加工作目录</div>
+<div class="cmd-item"><code>/clear</code> 清除会话历史</div>
+<div class="cmd-item"><code>/compact</code> 压缩上下文</div>
+<div class="cmd-item"><code>/context</code> 管理上下文</div>
+<div class="cmd-item"><code>/diff</code> 查看差异</div>
+<div class="cmd-item"><code>/export</code> 导出会话</div>
+<div class="cmd-item"><code>/plan</code> 规划模式</div>
+<div class="cmd-item"><code>/rename</code> 重命名会话</div>
+<div class="cmd-item"><code>/resume</code> 恢复会话</div>
+<div class="cmd-item"><code>/tag</code> 标记对话节点</div>
+</div>
+</div>
+
+<div id="cmd-2" class="tab-panel">
+<h3>AI模型与配置 <span class="cat-count">(7 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/effort</code> 调整推理力度</div>
+<div class="cmd-item"><code>/fast</code> 切换快速模型</div>
+<div class="cmd-item"><code>/model</code> 选择模型</div>
+<div class="cmd-item"><code>/advisor</code> 顾问模型</div>
+<div class="cmd-item"><code>/color</code> 颜色主题</div>
+<div class="cmd-item"><code>/theme</code> 界面主题</div>
+<div class="cmd-item"><code>/output-style</code> 输出风格</div>
+</div>
+</div>
+
+<div id="cmd-3" class="tab-panel">
+<h3>会话信息与状态 <span class="cat-count">(4 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/cost</code> 查看费用</div>
+<div class="cmd-item"><code>/status</code> 系统状态</div>
+<div class="cmd-item"><code>/usage</code> 使用量统计</div>
+<div class="cmd-item"><code>/version</code> 版本信息</div>
+</div>
+</div>
+
+<div id="cmd-4" class="tab-panel">
+<h3>设置与配置 <span class="cat-count">(6 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/config</code> 配置管理</div>
+<div class="cmd-item"><code>/help</code> 帮助信息</div>
+<div class="cmd-item"><code>/keybindings</code> 快捷键设置</div>
+<div class="cmd-item"><code>/memory</code> 记忆管理</div>
+<div class="cmd-item"><code>/permissions</code> 权限设置</div>
+<div class="cmd-item"><code>/vim</code> Vim模式</div>
+</div>
+</div>
+
+<div id="cmd-5" class="tab-panel">
+<h3>认证与账户 <span class="cat-count">(3 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/login</code> 登录</div>
+<div class="cmd-item"><code>/logout</code> 登出</div>
+<div class="cmd-item"><code>/oauth-refresh</code> 刷新OAuth令牌</div>
+</div>
+</div>
+
+<div id="cmd-6" class="tab-panel">
+<h3>订阅与限额 <span class="cat-count">(5 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/upgrade</code> 升级订阅</div>
+<div class="cmd-item"><code>/passes</code> 通行证管理</div>
+<div class="cmd-item"><code>/extra-usage</code> 额外用量</div>
+<div class="cmd-item"><code>/rate-limit-options</code> 限速选项</div>
+<div class="cmd-item"><code>/privacy-settings</code> 隐私设置</div>
+</div>
+</div>
+
+<div id="cmd-7" class="tab-panel">
+<h3>集成与安装 <span class="cat-count">(6 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/install-github-app</code> 安装GitHub App</div>
+<div class="cmd-item"><code>/install-slack-app</code> 安装Slack App</div>
+<div class="cmd-item"><code>/ide</code> IDE集成</div>
+<div class="cmd-item"><code>/desktop</code> 桌面应用</div>
+<div class="cmd-item"><code>/mobile</code> 移动端</div>
+<div class="cmd-item"><code>/chrome</code> Chrome扩展</div>
+</div>
+</div>
+
+<div id="cmd-8" class="tab-panel">
+<h3>开发工具 <span class="cat-count">(7 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/doctor</code> 诊断工具</div>
+<div class="cmd-item"><code>/plugin</code> 插件管理</div>
+<div class="cmd-item"><code>/reload-plugins</code> 重载插件</div>
+<div class="cmd-item"><code>/skills</code> 技能管理</div>
+<div class="cmd-item"><code>/hooks</code> 钩子管理</div>
+<div class="cmd-item"><code>/mcp</code> MCP管理</div>
+<div class="cmd-item"><code>/files</code> 文件管理</div>
+</div>
+</div>
+
+<div id="cmd-9" class="tab-panel">
+<h3>代码审查 <span class="cat-count">(3 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/review</code> 代码审查</div>
+<div class="cmd-item"><code>/ultrareview</code> 深度审查</div>
+<div class="cmd-item"><code>/security-review</code> 安全审查</div>
+</div>
+</div>
+
+<div id="cmd-10" class="tab-panel">
+<h3>沟通与工具 <span class="cat-count">(4 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/feedback</code> 反馈</div>
+<div class="cmd-item"><code>/btw</code> 补充信息</div>
+<div class="cmd-item"><code>/copy</code> 复制内容</div>
+<div class="cmd-item"><code>/tasks</code> 任务列表</div>
+</div>
+</div>
+
+<div id="cmd-11" class="tab-panel">
+<h3>远程与协作 <span class="cat-count">(4 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/branch</code> 分支管理</div>
+<div class="cmd-item"><code>/remote-control</code> 远程控制</div>
+<div class="cmd-item"><code>/session</code> 会话管理</div>
+<div class="cmd-item"><code>/remote-env</code> 远程环境</div>
+</div>
+</div>
+
+<div id="cmd-12" class="tab-panel">
+<h3>项目设置 <span class="cat-count">(2 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/init</code> 初始化项目</div>
+<div class="cmd-item"><code>/init-verifiers</code> 初始化验证器</div>
+</div>
+</div>
+
+<div id="cmd-13" class="tab-panel">
+<h3>发布更新 <span class="cat-count">(1 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/release-notes</code> 发布说明</div>
+</div>
+</div>
+
+<div id="cmd-14" class="tab-panel">
+<h3>其他 <span class="cat-count">(3 命令)</span></h3>
+<div class="cmd-list">
+<div class="cmd-item"><code>/stickers</code> 贴纸</div>
+<div class="cmd-item"><code>/thinkback</code> 回溯思考</div>
+<div class="cmd-item"><code>/exit</code> 退出</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:20px">
+<h4>特殊命令</h4>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+<div>
+<strong style="color:var(--orange)">内部命令 (16+)</strong>
+<div style="font-size:13px;color:var(--text2);margin-top:6px">
+<code style="color:var(--orange)">/commit</code> · <code style="color:var(--orange)">/autofix-pr</code> · <code style="color:var(--orange)">/bughunter</code> · <code style="color:var(--orange)">/teleport</code> 等
+</div>
+</div>
+<div>
+<strong style="color:var(--pink)">Feature-Gated命令 (10+)</strong>
+<div style="font-size:13px;color:var(--text2);margin-top:6px">
+<code style="color:var(--pink)">/brief</code> · <code style="color:var(--pink)">/assistant</code> · <code style="color:var(--pink)">/bridge</code> · <code style="color:var(--pink)">/voice</code> 等
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Section 5: Permission Pipeline -->
+<section class="section" id="permission-pipeline">
+<h2><span class="icon">🛡️</span> 权限决策流水线</h2>
+<p class="section-intro">每次工具调用都要经过 7 步权限决策流水线，从工具池过滤到最终用户确认，形成纵深防御体系。</p>
+
+<div class="card">
+<div class="pipeline">
+<div class="pipe-step">
+<div class="pipe-num">1</div>
+<div class="pipe-content"><strong>工具池过滤</strong><br><span style="color:var(--text2);font-size:14px">filterToolsByDenyRules 移除受限工具，确保被禁用的工具不会出现在候选列表中</span></div>
+</div>
+<div class="pipe-step">
+<div class="pipe-num">2</div>
+<div class="pipe-content"><strong>输入验证</strong><br><span style="color:var(--text2);font-size:14px">Zod Schema 验证工具参数，拒绝不合法的输入数据</span></div>
+</div>
+<div class="pipe-step">
+<div class="pipe-num">3</div>
+<div class="pipe-content"><strong>权限模式快速路径</strong><br>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+<span class="badge badge-blue">manual — 总是询问</span>
+<span class="badge badge-purple">ask — 记忆选择</span>
+<span class="badge badge-orange">auto — YOLO模式</span>
+<span class="badge badge-red">bypass — 跳过</span>
+<span class="badge badge-green">plan — 仅规划</span>
+</div>
+</div>
+</div>
+<div class="pipe-step">
+<div class="pipe-num">4</div>
+<div class="pipe-content"><strong>工具级权限检查</strong><br><span style="color:var(--text2);font-size:14px">每个工具自定义 canUse() 逻辑，如工具特定的前置条件检查</span></div>
+</div>
+<div class="pipe-step">
+<div class="pipe-num">5</div>
+<div class="pipe-content"><strong>规则匹配</strong><br>
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;align-items:center">
+<span class="badge badge-red">policy</span>
+<span style="color:var(--text2)">></span>
+<span class="badge badge-orange">user</span>
+<span style="color:var(--text2)">></span>
+<span class="badge badge-purple">project</span>
+<span style="color:var(--text2)">></span>
+<span class="badge badge-blue">local</span>
+<span style="color:var(--text2)">></span>
+<span class="badge badge-green">flag</span>
+<span style="color:var(--text2)">></span>
+<span class="badge badge-pink">command</span>
+<span style="color:var(--text2)">></span>
+<span class="badge badge-orange">session</span>
+</div>
+<div style="font-size:13px;color:var(--text2);margin-top:6px">7级优先级规则链，高优先级规则覆盖低优先级</div>
+</div>
+</div>
+<div class="pipe-step">
+<div class="pipe-num">6</div>
+<div class="pipe-content"><strong>PreToolUse Hooks</strong><br><span style="color:var(--text2);font-size:14px">外部安全扩展点，允许第三方安全工具在工具执行前进行审查</span></div>
+</div>
+<div class="pipe-step">
+<div class="pipe-num">7</div>
+<div class="pipe-content"><strong>分类器 / 用户确认</strong><br><span style="color:var(--text2);font-size:14px">Bash YOLO 分类器（AI 判断命令安全性）或交互式 UI 确认</span></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Section 6: Bash Security -->
+<section class="section" id="bash-security">
+<h2><span class="icon">🔒</span> Bash安全检测</h2>
+<p class="section-intro">Claude Code 实现了 23+ 种危险模式检测器，采用两阶段检测策略：快速模式匹配 + AI 分类器判断，确保 Shell 命令执行的安全性。</p>
+
+<div class="danger-grid">
+<div class="danger-card">
+<div class="title">🔴 命令注入</div>
+<div class="patterns">$() · `` · &lt;()<br>Shell替换检测</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 变量注入</div>
+<div class="patterns">$IFS · $SHELL<br>环境变量利用</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 重定向</div>
+<div class="patterns">> · &lt; · >><br>文件重定向检测</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 编码绕过</div>
+<div class="patterns">Base64 · hex<br>编码检测</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 Zsh内置</div>
+<div class="patterns">Zsh特有危险命令<br>内置函数检测</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 引号逃逸</div>
+<div class="patterns">引号嵌套绕过<br>字符串逃逸检测</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 花括号展开</div>
+<div class="patterns">Brace expansion<br>{a,b}展开检测</div>
+</div>
+<div class="danger-card">
+<div class="title">🔴 控制字符</div>
+<div class="patterns">不可见字符<br>Unicode控制字符</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:20px">
+<h4>两阶段检测架构</h4>
+<div class="hierarchy" style="margin:16px 0">
+<div class="h-node" style="border-color:var(--orange)">⚡ 阶段一：模式匹配<br><small style="color:var(--text2)">23+ 正则模式 · 快速过滤</small></div>
+<div class="h-arrow">→</div>
+<div class="h-node" style="border-color:var(--purple)">🤖 阶段二：YOLO分类器<br><small style="color:var(--text2)">AI判断 · 上下文感知</small></div>
+</div>
+<div style="margin-top:12px">
+<strong style="color:var(--red)">Bypass-immune 路径（始终受保护）</strong>
+<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+<span class="badge badge-red">.git/</span>
+<span class="badge badge-red">.claude/</span>
+<span class="badge badge-red">.vscode/</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Section 7: Feature Gate -->
+<section class="section" id="feature-gate">
+<h2><span class="icon">🚪</span> Feature Gate 机制</h2>
+<p class="section-intro">Claude Code 使用编译时 Feature Gate 进行条件编译，在构建阶段消除未启用功能的代码，与传统运行时 Feature Flag 形成鲜明对比。</p>
+
+<div class="card">
+<h4>编译时消除 vs 运行时Feature Flag</h4>
+<table class="compare-table">
+<thead>
+<tr><th>特性</th><th>编译时 Feature Gate</th><th>运行时 Feature Flag</th></tr>
+</thead>
+<tbody>
+<tr><td>代码消除</td><td><span class="check">✅ 死代码完全移除</span></td><td><span class="cross">❌ 代码保留在包中</span></td></tr>
+<tr><td>字符串泄露</td><td><span class="check">✅ 不泄露</span></td><td><span class="cross">❌ 可能泄露</span></td></tr>
+<tr><td>包体积</td><td><span class="check">✅ 显著减小</span></td><td><span class="cross">❌ 无变化</span></td></tr>
+<tr><td>动态切换</td><td><span class="cross">❌ 需重新构建</span></td><td><span class="check">✅ 运行时切换</span></td></tr>
+<tr><td>实现方式</td><td>Bun构建时评估条件</td><td>运行时条件判断</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h4>20+ 特性标识</h4>
+<p style="font-size:14px;color:var(--text2);margin-bottom:12px">条件编译控制的功能模块，在构建阶段由 Bun 打包工具评估，未启用的功能代码被完全移除：</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<span class="badge badge-blue">AGENT_TOOLS</span>
+<span class="badge badge-purple">SWARM_MODE</span>
+<span class="badge badge-green">TASK_V2</span>
+<span class="badge badge-orange">MCP_AUTH</span>
+<span class="badge badge-pink">VOICE_MODE</span>
+<span class="badge badge-blue">BRIDGE_MODE</span>
+<span class="badge badge-purple">CRON_JOBS</span>
+<span class="badge badge-green">REMOTE_TRIGGER</span>
+<span class="badge badge-orange">WORKTREE</span>
+<span class="badge badge-pink">NOTEBOOK_EDIT</span>
+<span class="badge badge-blue">DESKTOP_APP</span>
+<span class="badge badge-purple">MOBILE_APP</span>
+<span class="badge badge-green">CHROME_EXT</span>
+<span class="badge badge-orange">ULTRA_REVIEW</span>
+<span class="badge badge-pink">SECURITY_REVIEW</span>
+<span class="badge badge-blue">STRUCTURED_OUTPUT</span>
+<span class="badge badge-purple">TOOL_SEARCH</span>
+<span class="badge badge-green">SLEEP_TOOL</span>
+<span class="badge badge-orange">ASSISTANT_MODE</span>
+<span class="badge badge-pink">BRIEF_MODE</span>
+</div>
+</div>
+</section>
+
+<!-- Section 8: Evaluation -->
+<section class="section" id="evaluation">
+<h2><span class="icon">💡</span> 设计评析</h2>
+
+<div class="eval-section">
+<div class="card eval-good">
+<h4>✅ 巧妙之处</h4>
+<ul>
+<li>统一的工具抽象接口简化扩展——新增工具只需实现统一接口</li>
+<li>Fail-Closed 默认安全策略——工具默认不可信</li>
+<li>7层权限纵深防御——多层安全保障</li>
+<li>Bash 23+ 模式检测保障安全——两阶段检测架构</li>
+<li>MCP协议实现真正的工具生态开放——5种传输协议支持</li>
+<li>Feature Gate 编译时优化减小包体积——死代码完全消除</li>
+</ul>
+</div>
+<div class="card eval-bad">
+<h4>⚠️ 潜在问题</h4>
+<ul>
+<li>43+ 工具的维护成本高——每个工具需独立维护</li>
+<li>MCP动态工具的安全边界模糊——外部工具信任问题</li>
+<li>权限规则7级优先级理解成本高——调试困难</li>
+<li>YOLO分类器可能存在误判——安全性取决于AI判断质量</li>
+<li>命令数量庞大(86+)增加学习曲线——用户需记忆大量命令</li>
+</ul>
+</div>
+</div>
+</section>
+
+</main>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    const tabId = this.dataset.tab;
+    const parent = this.closest('.section') || document;
+    parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    parent.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    const panel = document.getElementById(tabId);
+    if (panel) panel.classList.add('active');
+  });
+});
+
+// Sidebar scroll highlight
+const sections = document.querySelectorAll('.section');
+const sidebarLinks = document.querySelectorAll('.sidebar a');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      sidebarLinks.forEach(l => l.classList.remove('active'));
+      const link = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// Smooth scroll
+document.querySelectorAll('.sidebar a').forEach(a => {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+</body>
+</html>
