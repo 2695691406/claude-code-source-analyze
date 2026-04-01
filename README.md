@@ -10,6 +10,10 @@
 > **不代表**官方原始内部开发仓库结构。
 > 一切基于L站"飘然与我同"的情报提供
 
+## 分析报告预览
+
+![reports/index.html 截图](https://github.com/user-attachments/assets/728ad836-66fb-44e0-a7b0-e0c7127ff396)
+
 ## 概述
 
 本仓库通过 npm 发布包（`@anthropic-ai/claude-code`）内附带的 source map（`cli.js.map`）还原的 TypeScript 源码，版本为 `2.1.88`。
