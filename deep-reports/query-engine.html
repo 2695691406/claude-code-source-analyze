@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueryEngine 核心引擎深度逆向 - Claude Code v2.1.88 深度技术审计</title>
+<style>
+/* ============================================================
+   CSS Variables — GitHub Dark Theme
+   ============================================================ */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a { color: var(--accent-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ============================================================
+   Custom Scrollbar
+   ============================================================ */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* ============================================================
+   Particle Background
+   ============================================================ */
+.particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  opacity: 0;
+}
+
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+
+.particle:nth-child(1)  { width: 3px; height: 3px; left:  6%; background: var(--accent-blue);   animation-duration: 18s; animation-delay: 0s;   }
+.particle:nth-child(2)  { width: 2px; height: 2px; left: 15%; background: var(--accent-purple); animation-duration: 22s; animation-delay: 1.5s; }
+.particle:nth-child(3)  { width: 4px; height: 4px; left: 24%; background: var(--accent-green);  animation-duration: 15s; animation-delay: 3s;   }
+.particle:nth-child(4)  { width: 2px; height: 2px; left: 33%; background: var(--accent-cyan);   animation-duration: 25s; animation-delay: 0.8s; }
+.particle:nth-child(5)  { width: 3px; height: 3px; left: 42%; background: var(--accent-pink);   animation-duration: 20s; animation-delay: 5s;   }
+.particle:nth-child(6)  { width: 2px; height: 2px; left: 51%; background: var(--accent-orange); animation-duration: 17s; animation-delay: 2.2s; }
+.particle:nth-child(7)  { width: 4px; height: 4px; left: 60%; background: var(--accent-blue);   animation-duration: 23s; animation-delay: 4s;   }
+.particle:nth-child(8)  { width: 3px; height: 3px; left: 69%; background: var(--accent-purple); animation-duration: 19s; animation-delay: 1s;   }
+.particle:nth-child(9)  { width: 2px; height: 2px; left: 78%; background: var(--accent-green);  animation-duration: 21s; animation-delay: 6s;   }
+.particle:nth-child(10) { width: 3px; height: 3px; left: 85%; background: var(--accent-cyan);   animation-duration: 16s; animation-delay: 3.5s; }
+.particle:nth-child(11) { width: 4px; height: 4px; left: 92%; background: var(--accent-pink);   animation-duration: 24s; animation-delay: 2s;   }
+.particle:nth-child(12) { width: 2px; height: 2px; left: 98%; background: var(--accent-orange); animation-duration: 14s; animation-delay: 7s;   }
+
+/* ============================================================
+   Top Navigation Bar
+   ============================================================ */
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.top-nav a { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.top-nav .title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left: auto;
+}
+
+/* ============================================================
+   Sidebar Toggle (Mobile)
+   ============================================================ */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--glow-blue);
+  transition: var(--transition);
+}
+.sidebar-toggle:hover { transform: scale(1.1); }
+
+/* ============================================================
+   Layout: Sidebar + Main
+   ============================================================ */
+.layout {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  gap: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  width: 260px;
+  position: sticky;
+  top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+}
+.sidebar a {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  transition: var(--transition);
+  border-left: 2px solid transparent;
+}
+.sidebar a:hover,
+.sidebar a.active {
+  color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.08);
+  text-decoration: none;
+  border-left-color: var(--accent-blue);
+}
+
+.main { flex: 1; padding: 0 40px 60px; min-width: 0; }
+
+/* ============================================================
+   Hero Section
+   ============================================================ */
+.hero {
+  text-align: center;
+  padding: 48px 0 36px;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(88,166,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  animation: headerGlow 8s ease-in-out infinite;
+}
+@keyframes headerGlow {
+  0%, 100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 1;   transform: translateX(-50%) scale(1.15); }
+}
+.hero-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--accent-blue);
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 6s ease-in-out infinite;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.hero-sub {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 680px;
+  margin: 0 auto 24px;
+  line-height: 1.7;
+}
+.hero-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--gradient-primary);
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   Stats Cards
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 32px 0 40px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-highlight);
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-card:nth-child(1)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
+.stat-card:nth-child(2)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink)); }
+.stat-card:nth-child(3)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+.stat-card:nth-child(4)::before { background: linear-gradient(90deg, var(--accent-orange), var(--accent-yellow)); }
+.stat-card:nth-child(1):hover { box-shadow: 0 4px 24px rgba(88, 166, 255, 0.15); }
+.stat-card:nth-child(2):hover { box-shadow: 0 4px 24px rgba(188, 140, 255, 0.15); }
+.stat-card:nth-child(3):hover { box-shadow: 0 4px 24px rgba(126, 231, 135, 0.15); }
+.stat-card:nth-child(4):hover { box-shadow: 0 4px 24px rgba(240, 136, 62, 0.15); }
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.stat-card:nth-child(1) .stat-value { color: var(--accent-blue); }
+.stat-card:nth-child(2) .stat-value { color: var(--accent-purple); }
+.stat-card:nth-child(3) .stat-value { color: var(--accent-green); }
+.stat-card:nth-child(4) .stat-value { color: var(--accent-orange); }
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   Content Sections
+   ============================================================ */
+.section {
+  margin-bottom: 48px;
+  animation: fadeUp 0.5s ease;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)) 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h2 .icon { font-size: 28px; }
+h3 {
+  font-size: 18px;
+  color: var(--accent-blue);
+  margin: 16px 0 10px;
+}
+.section-intro {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+
+/* ============================================================
+   Cards
+   ============================================================ */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: var(--transition);
+}
+.card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(88, 166, 255, 0.1);
+}
+.card h4 {
+  color: var(--accent-purple);
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+/* ============================================================
+   Code Blocks
+   ============================================================ */
+.code-block {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.code-block .kw  { color: var(--accent-purple); }
+.code-block .fn  { color: var(--accent-blue); }
+.code-block .str { color: var(--accent-green); }
+.code-block .cm  { color: var(--text-secondary); }
+.code-block .num { color: var(--accent-orange); }
+.code-block .tp  { color: var(--accent-cyan); }
+.code-block .op  { color: var(--accent-red); }
+
+/* ============================================================
+   Badges
+   ============================================================ */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 2px;
+}
+.badge-blue   { background: rgba(88, 166, 255, 0.15);  color: var(--accent-blue); }
+.badge-purple { background: rgba(188, 140, 255, 0.15); color: var(--accent-purple); }
+.badge-green  { background: rgba(126, 231, 135, 0.15); color: var(--accent-green); }
+.badge-orange { background: rgba(240, 136, 62, 0.15);  color: var(--accent-orange); }
+.badge-red    { background: rgba(248, 81, 73, 0.15);   color: var(--accent-red); }
+.badge-pink   { background: rgba(247, 120, 186, 0.15); color: var(--accent-pink); }
+.badge-cyan   { background: rgba(118, 228, 247, 0.15); color: var(--accent-cyan); }
+
+/* ============================================================
+   Pipeline Steps
+   ============================================================ */
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.pipeline::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(var(--accent-blue), var(--accent-purple), var(--accent-green));
+}
+.pipe-step {
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+  position: relative;
+}
+.pipe-num {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+.pipe-content { flex: 1; padding-top: 8px; }
+.pipe-content strong { color: var(--accent-blue); }
+
+/* ============================================================
+   Hierarchy Nodes
+   ============================================================ */
+.hierarchy {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 16px 0;
+  justify-content: center;
+}
+.h-node {
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+  border: 2px solid var(--accent-blue);
+  border-radius: 10px;
+  padding: 10px 20px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+.h-arrow {
+  color: var(--accent-purple);
+  font-size: 24px;
+  padding: 0 8px;
+}
+
+/* ============================================================
+   Tables
+   ============================================================ */
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.compare-table th,
+.compare-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  font-size: 14px;
+}
+.compare-table th {
+  background: var(--bg-tertiary);
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+.compare-table td { background: var(--bg-secondary); }
+.check { color: var(--accent-green); }
+.cross { color: var(--accent-red); }
+
+/* ============================================================
+   Grid Layouts
+   ============================================================ */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* ============================================================
+   Tool Card
+   ============================================================ */
+.tool-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  transition: var(--transition);
+}
+.tool-card:hover {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 15px rgba(188, 140, 255, 0.08);
+}
+
+/* ============================================================
+   Evaluation Section
+   ============================================================ */
+.eval-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.eval-good { border-left: 3px solid var(--accent-green); }
+.eval-bad  { border-left: 3px solid var(--accent-orange); }
+.eval-good h4 { color: var(--accent-green) !important; }
+.eval-bad  h4 { color: var(--accent-orange) !important; }
+
+ul { padding-left: 20px; }
+li { margin-bottom: 6px; font-size: 14px; }
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.footer {
+  text-align: center;
+  padding: 40px 20px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--accent-blue);
+  margin-bottom: 8px;
+}
+.footer-back:hover { text-decoration: underline; }
+.footer-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-top: 12px;
+}
+.footer-meta code {
+  color: var(--accent-cyan);
+  background: rgba(118, 228, 247, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 900px) {
+  .sidebar-toggle { display: block; }
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    position: fixed;
+    top: 52px;
+    left: -100%;
+    height: calc(100vh - 52px);
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    z-index: 150;
+    transition: left 0.3s;
+  }
+  .sidebar.open { left: 0; }
+  .main { padding: 0 16px 60px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .eval-section { grid-template-columns: 1fr; }
+  .hierarchy { flex-direction: column; }
+  .h-arrow { transform: rotate(90deg); }
+  .hero h1 { font-size: 26px; }
+}
+@media (max-width: 560px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-value { font-size: 22px; }
+  .top-nav .title { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     Particle Background (12 particles)
+     ============================================================ -->
+<div class="particles">
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+</div>
+
+<!-- ============================================================
+     Top Navigation Bar
+     ============================================================ -->
+<nav class="top-nav">
+  <a href="index.html">← 返回导航中心</a>
+  <span class="title">🔍 QueryEngine 核心引擎深度逆向</span>
+</nav>
+
+<!-- ============================================================
+     Mobile Sidebar Toggle
+     ============================================================ -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="切换目录">☰</button>
+
+<!-- ============================================================
+     Layout: Sidebar + Main Content
+     ============================================================ -->
+<div class="layout">
+
+  <!-- Sidebar TOC -->
+  <aside class="sidebar" id="sidebar">
+    <a href="#architecture">1. 架构总览</a>
+    <a href="#query-pipeline">2. 查询管道</a>
+    <a href="#tool-executor">3. 工具执行引擎</a>
+    <a href="#tool-orchestration">4. 工具编排策略</a>
+    <a href="#context-window">5. 上下文窗口管理</a>
+    <a href="#abort-cancel">6. 中断与取消</a>
+    <a href="#error-recovery">7. 错误恢复机制</a>
+    <a href="#generator-utils">8. 生成器工具链</a>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- ======================================================
+         Hero Section
+         ====================================================== -->
+    <section class="hero">
+      <div class="hero-badge">Claude Code v2.1.88 · 核心引擎</div>
+      <h1>🔍 QueryEngine 核心引擎深度逆向</h1>
+      <p class="hero-sub">
+        QueryEngine 是 Claude Code 的心脏——它拥有查询生命周期的完整控制权，管理会话状态、工具调度、上下文窗口、错误恢复和中断机制。本报告对其递归管道架构、并发执行引擎和多层容错机制进行完整逆向分析。
+      </p>
+      <div class="hero-divider"></div>
+    </section>
+
+    <!-- ======================================================
+         Stats Cards
+         ====================================================== -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">1,295</div>
+        <div class="stat-label">行核心代码</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">8 层</div>
+        <div class="stat-label">递归管道</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">10 并发</div>
+        <div class="stat-label">工具执行</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">5 重</div>
+        <div class="stat-label">错误恢复</div>
+      </div>
+    </div>
+
+    <!-- ======================================================
+         Section 1: Architecture Overview
+         ====================================================== -->
+    <section class="section" id="architecture">
+      <h2><span class="icon">🏗️</span> 架构总览</h2>
+      <p class="section-intro">
+        QueryEngine 类是整个对话系统的核心入口。每个会话对应一个 QueryEngine 实例，它独占查询生命周期的完整控制权：从消息提交、API 调用、工具调度到结果回流，所有环节均在此类内完成闭环。
+      </p>
+
+      <div class="card">
+        <h4>QueryEngine 核心字段</h4>
+        <div class="code-block">
+<span class="kw">class</span> <span class="fn">QueryEngine</span> {<br>
+&nbsp;&nbsp;<span class="cm">// 配置 — 模型、权限、Feature Flags</span><br>
+&nbsp;&nbsp;<span class="kw">private</span> <span class="fn">config</span>: <span class="tp">QueryEngineConfig</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 可变消息列表 — 完整对话历史</span><br>
+&nbsp;&nbsp;<span class="kw">private</span> <span class="fn">mutableMessages</span>: <span class="tp">Message[]</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 中断控制器 — 用户 ESC 触发</span><br>
+&nbsp;&nbsp;<span class="kw">private</span> <span class="fn">abortController</span>: <span class="tp">AbortController</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 权限拒绝记录 — 防止重复询问</span><br>
+&nbsp;&nbsp;<span class="kw">private</span> <span class="fn">permissionDenials</span>: <span class="tp">Map&lt;string, PermissionDenial&gt;</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// Token 用量累计</span><br>
+&nbsp;&nbsp;<span class="kw">private</span> <span class="fn">totalUsage</span>: <span class="tp">{ input: number; output: number; cacheRead: number }</span>;<br><br>
+&nbsp;&nbsp;<span class="cm">// 主入口 — 异步生成器，yield 流式事件</span><br>
+&nbsp;&nbsp;<span class="kw">async</span> *<span class="fn">submitMessage</span>(<span class="fn">userMessage</span>: <span class="tp">string</span>): <span class="tp">AsyncGenerator&lt;StreamEvent&gt;</span> {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// → 构建消息 → 进入 query() 管道 → yield 结果</span><br>
+&nbsp;&nbsp;}<br>
+}
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>单实例 per 会话设计</h4>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px">
+          每个对话窗口创建一个 QueryEngine 实例。该实例维护完整的会话状态——消息历史、权限缓存、Token 统计——确保一次对话内的所有查询共享同一个上下文。
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge badge-blue">1 会话 = 1 实例</span>
+          <span class="badge badge-purple">状态隔离</span>
+          <span class="badge badge-green">生命周期绑定</span>
+          <span class="badge badge-orange">闭环管理</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>QueryEngine 在系统中的位置</h4>
+        <div class="code-block">
+<span class="cm">┌──────────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span>  <span class="fn">UI Layer</span> (React/Ink Terminal)                              <span class="cm">│</span><br>
+<span class="cm">│</span>    └─ <span class="str">用户输入</span> ─────────────────────────────┐                <span class="cm">│</span><br>
+<span class="cm">├──────────────────────────────────────────────┼───────────────┤</span><br>
+<span class="cm">│</span>  <span class="kw">QueryEngine</span>                                 <span class="cm">│</span>               <span class="cm">│</span><br>
+<span class="cm">│</span>    ├─ <span class="fn">submitMessage()</span>  ◄──────────────────┘               <span class="cm">│</span><br>
+<span class="cm">│</span>    ├─ <span class="fn">query()</span>          → API 调用管道                     <span class="cm">│</span><br>
+<span class="cm">│</span>    ├─ <span class="fn">queryLoop()</span>      → 递归工具调度                     <span class="cm">│</span><br>
+<span class="cm">│</span>    ├─ <span class="fn">runTools()</span>       → 并发/串行执行                     <span class="cm">│</span><br>
+<span class="cm">│</span>    └─ <span class="fn">yield events</span>     → 回流到 UI                        <span class="cm">│</span><br>
+<span class="cm">├──────────────────────────────────────────────────────────────┤</span><br>
+<span class="cm">│</span>  <span class="tp">Claude API</span>  ·  <span class="tp">Tool Registry</span>  ·  <span class="tp">Permission Engine</span>         <span class="cm">│</span><br>
+<span class="cm">└──────────────────────────────────────────────────────────────┘</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 2: Query Pipeline
+         ====================================================== -->
+    <section class="section" id="query-pipeline">
+      <h2><span class="icon">🔄</span> 查询管道 (Query Pipeline)</h2>
+      <p class="section-intro">
+        query.ts 是 QueryEngine 的核心管道实现。整个查询流程采用 AsyncGenerator 模式，通过 <code style="color:var(--accent-cyan)">yield</code> 实现流式事件回传。管道由 <code style="color:var(--accent-cyan)">query()</code> 入口进入 <code style="color:var(--accent-cyan)">queryLoop()</code> 递归循环，循环内执行 API 调用 → 工具分派 → 结果回流。
+      </p>
+
+      <div class="card">
+        <h4>query() 函数签名</h4>
+        <div class="code-block">
+<span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span>* <span class="fn">query</span>(<br>
+&nbsp;&nbsp;<span class="fn">params</span>: <span class="tp">QueryParams</span><br>
+): <span class="tp">AsyncGenerator</span>&lt;<br>
+&nbsp;&nbsp;<span class="tp">StreamEvent</span> | <span class="tp">RequestStartEvent</span> | <span class="tp">Message</span> | <span class="tp">TombstoneMessage</span> | <span class="tp">ToolUseSummaryMessage</span>,<br>
+&nbsp;&nbsp;<span class="tp">Terminal</span>  <span class="cm">// return type — 终止信号</span><br>
+&gt;
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+          返回类型使用 AsyncGenerator 三泛型：<span class="badge badge-blue">Yield</span> 流式事件、<span class="badge badge-purple">Return</span> 终止信号、<span class="badge badge-green">Next</span> 未使用。这使得调用方可以用 <code style="color:var(--accent-cyan)">for await...of</code> 消费流式事件，同时通过 <code style="color:var(--accent-cyan)">.return()</code> 获取终止状态。
+        </p>
+      </div>
+
+      <div class="card">
+        <h4>管道状态 (State) 核心字段</h4>
+        <div class="code-block">
+<span class="kw">interface</span> <span class="fn">QueryState</span> {<br>
+&nbsp;&nbsp;<span class="fn">messages</span>: <span class="tp">Message[]</span>;                        <span class="cm">// 消息历史</span><br>
+&nbsp;&nbsp;<span class="fn">toolUseContext</span>: <span class="tp">ToolUseContext</span>;              <span class="cm">// 工具执行上下文</span><br>
+&nbsp;&nbsp;<span class="fn">autoCompactTracking</span>: <span class="tp">AutoCompactState</span>;    <span class="cm">// 自动压缩追踪</span><br>
+&nbsp;&nbsp;<span class="fn">maxOutputTokensRecoveryCount</span>: <span class="tp">number</span>;     <span class="cm">// 输出截断恢复次数</span><br>
+&nbsp;&nbsp;<span class="fn">hasAttemptedReactiveCompact</span>: <span class="tp">boolean</span>;     <span class="cm">// 是否已尝试响应式压缩</span><br>
+&nbsp;&nbsp;<span class="fn">maxOutputTokensOverride</span>: <span class="tp">number | null</span>;   <span class="cm">// 输出 Token 上限覆盖</span><br>
+&nbsp;&nbsp;<span class="fn">pendingToolUseSummary</span>: <span class="tp">ToolUseSummary[]</span>;  <span class="cm">// 待处理工具摘要</span><br>
+&nbsp;&nbsp;<span class="fn">stopHookActive</span>: <span class="tp">boolean</span>;                  <span class="cm">// 停止钩子激活</span><br>
+&nbsp;&nbsp;<span class="fn">turnCount</span>: <span class="tp">number</span>;                         <span class="cm">// 当前轮次计数</span><br>
+&nbsp;&nbsp;<span class="fn">transition</span>: <span class="tp">Transition | null</span>;              <span class="cm">// 状态转换信号</span><br>
+}
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>管道流程 — 8 步递归</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>query() 入口</strong><br><span style="color:var(--text-secondary);font-size:14px">初始化 State，设置 AbortController，准备消息列表</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>queryLoop() 递归循环</strong><br><span style="color:var(--text-secondary);font-size:14px">检查终止条件（turnCount、abort、transition），否则继续执行</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>API 请求构建</strong><br><span style="color:var(--text-secondary);font-size:14px">组装 messages + system prompt + tools 定义，yield RequestStartEvent</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">4</div>
+            <div class="pipe-content"><strong>流式响应消费</strong><br><span style="color:var(--text-secondary);font-size:14px">逐 chunk yield StreamEvent（text delta、tool_use block、stop_reason）</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">5</div>
+            <div class="pipe-content"><strong>工具调用检测</strong><br><span style="color:var(--text-secondary);font-size:14px">解析 assistant message 中的 tool_use content blocks</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">6</div>
+            <div class="pipe-content"><strong>runTools() 工具执行</strong><br><span style="color:var(--text-secondary);font-size:14px">并发安全工具并行、写入工具串行，结果追加到消息列表</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">7</div>
+            <div class="pipe-content"><strong>结果回流</strong><br><span style="color:var(--text-secondary);font-size:14px">yield Message（tool_result）+ ToolUseSummaryMessage，更新 State</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">8</div>
+            <div class="pipe-content"><strong>递归/终止判定</strong><br><span style="color:var(--text-secondary);font-size:14px">有工具调用 → 递归回到步骤 2；stop_reason=end_turn → 返回 Terminal</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 3: Tool Executor
+         ====================================================== -->
+    <section class="section" id="tool-executor">
+      <h2><span class="icon">⚙️</span> 工具执行引擎</h2>
+      <p class="section-intro">
+        StreamingToolExecutor 是工具执行的核心引擎，管理并发控制、AbortController 层级和工具间依赖。它通过 <code style="color:var(--accent-cyan)">canExecuteTool()</code> 检查工具的 <code style="color:var(--accent-cyan)">isConcurrencySafe</code> 标志，实现读写分离的并发策略。
+      </p>
+
+      <div class="card">
+        <h4>并发控制模型</h4>
+        <div class="code-block">
+<span class="cm">// 并发决策逻辑</span><br>
+<span class="kw">function</span> <span class="fn">canExecuteTool</span>(<span class="fn">tool</span>: <span class="tp">Tool</span>): <span class="tp">boolean</span> {<br>
+&nbsp;&nbsp;<span class="kw">if</span> (<span class="fn">tool</span>.<span class="fn">isConcurrencySafe</span>()) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="str">true</span>;   <span class="cm">// ✅ 可并发执行（只读工具）</span><br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;<span class="kw">return</span> <span class="str">false</span>;     <span class="cm">// ❌ 串行执行（写入工具）</span><br>
+}
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+          <span class="badge badge-green">✅ 并发安全：Read, Glob, Grep, LSP</span>
+          <span class="badge badge-red">❌ 串行执行：Write, Edit, Bash</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>AbortController 三层层级</h4>
+        <div class="code-block">
+<span class="cm">┌─────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span>  <span class="kw">toolUseContext.abortController</span>  <span class="cm">(Root 根控制器)</span>       <span class="cm">│</span><br>
+<span class="cm">│</span>  <span class="str">用户 ESC / 超时触发</span>                                    <span class="cm">│</span><br>
+<span class="cm">│</span>  └─────────────────────────────────────────┐             <span class="cm">│</span><br>
+<span class="cm">│</span>      <span class="kw">siblingAbortController</span>  <span class="cm">(兄弟控制器)</span>      <span class="cm">│</span>             <span class="cm">│</span><br>
+<span class="cm">│</span>      <span class="str">Bash 错误触发 → 取消同批次工具</span>         <span class="cm">│</span>             <span class="cm">│</span><br>
+<span class="cm">│</span>      └────────────────────────────┐        <span class="cm">│</span>             <span class="cm">│</span><br>
+<span class="cm">│</span>          <span class="kw">toolAbortController</span>     <span class="cm">│</span>        <span class="cm">│</span>             <span class="cm">│</span><br>
+<span class="cm">│</span>          <span class="str">单工具粒度取消</span>          <span class="cm">│</span>        <span class="cm">│</span>             <span class="cm">│</span><br>
+<span class="cm">│</span>          <span class="cm">(per-tool)</span>              <span class="cm">│</span>        <span class="cm">│</span>             <span class="cm">│</span><br>
+<span class="cm">└───────────────────────────────────┴────────┴─────────────┘</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>并发上限</h4>
+        <div class="code-block">
+<span class="cm">// 环境变量控制并发上限</span><br>
+<span class="kw">const</span> <span class="fn">CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY</span> = <span class="num">10</span>;<br><br>
+<span class="cm">// 同一批次最多 10 个工具并发执行</span><br>
+<span class="cm">// 超出的工具进入等待队列</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+          默认值 <span class="badge badge-orange">10</span>，可通过环境变量 <code style="color:var(--accent-cyan)">CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY</code> 覆盖。这限制了同时在飞的工具调用数，防止资源耗尽。
+        </p>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 4: Tool Orchestration
+         ====================================================== -->
+    <section class="section" id="tool-orchestration">
+      <h2><span class="icon">🎯</span> 工具编排策略</h2>
+      <p class="section-intro">
+        toolOrchestration.ts 中的 <code style="color:var(--accent-cyan)">runTools()</code> 函数是工具编排的核心。它将 Claude 返回的工具调用列表按并发安全性分区，然后分别用并行或串行策略执行。
+      </p>
+
+      <div class="card">
+        <h4>runTools() 编排流程</h4>
+        <div class="code-block">
+<span class="kw">async</span> <span class="kw">function</span>* <span class="fn">runTools</span>(<br>
+&nbsp;&nbsp;<span class="fn">toolCalls</span>: <span class="tp">ToolCall[]</span>,<br>
+&nbsp;&nbsp;<span class="fn">context</span>: <span class="tp">ToolUseContext</span><br>
+): <span class="tp">AsyncGenerator&lt;ToolEvent&gt;</span> {<br><br>
+&nbsp;&nbsp;<span class="cm">// Step 1: 分区 — 按并发安全性拆分</span><br>
+&nbsp;&nbsp;<span class="kw">const</span> { <span class="fn">concurrent</span>, <span class="fn">serial</span> } = <span class="fn">partitionToolCalls</span>(<span class="fn">toolCalls</span>);<br><br>
+&nbsp;&nbsp;<span class="cm">// Step 2: 并行执行所有并发安全工具</span><br>
+&nbsp;&nbsp;<span class="kw">yield</span>* <span class="fn">all</span>(<span class="fn">concurrent</span>.<span class="fn">map</span>(<span class="fn">tc</span> =&gt; <span class="fn">executeTool</span>(<span class="fn">tc</span>)));<br><br>
+&nbsp;&nbsp;<span class="cm">// Step 3: 串行执行非并发安全工具</span><br>
+&nbsp;&nbsp;<span class="kw">for</span> (<span class="kw">const</span> <span class="fn">tc</span> <span class="kw">of</span> <span class="fn">serial</span>) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">yield</span>* <span class="fn">executeTool</span>(<span class="fn">tc</span>);<br>
+&nbsp;&nbsp;}<br>
+}
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>partitionToolCalls() 分区逻辑</h4>
+        <div class="code-block">
+<span class="kw">function</span> <span class="fn">partitionToolCalls</span>(<br>
+&nbsp;&nbsp;<span class="fn">toolCalls</span>: <span class="tp">ToolCall[]</span><br>
+): { <span class="fn">concurrent</span>: <span class="tp">ToolCall[]</span>; <span class="fn">serial</span>: <span class="tp">ToolCall[]</span> } {<br>
+&nbsp;&nbsp;<span class="kw">return</span> {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="fn">concurrent</span>: <span class="fn">toolCalls</span>.<span class="fn">filter</span>(<span class="fn">tc</span> =&gt; <span class="fn">tc</span>.<span class="fn">tool</span>.<span class="fn">isConcurrencySafe</span>()),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="fn">serial</span>:     <span class="fn">toolCalls</span>.<span class="fn">filter</span>(<span class="fn">tc</span> =&gt; !<span class="fn">tc</span>.<span class="fn">tool</span>.<span class="fn">isConcurrencySafe</span>()),<br>
+&nbsp;&nbsp;};<br>
+}
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>并发生成器 — all() 实用函数</h4>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px">
+          <code style="color:var(--accent-cyan)">all()</code> 是并发执行多个 AsyncGenerator 的核心工具。它同时启动所有生成器，通过 Promise.race 收集第一个完成的结果，合并所有 yield 值，并受并发上限 cap 控制。
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge badge-blue">Promise.race 驱动</span>
+          <span class="badge badge-purple">并发上限 cap</span>
+          <span class="badge badge-green">合并 yield 值</span>
+          <span class="badge badge-orange">错误传播</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>编排策略总览</h4>
+        <table class="compare-table">
+          <thead>
+            <tr><th>策略</th><th>适用工具</th><th>执行方式</th><th>上限</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-green">并行</span></td>
+              <td>Read, Glob, Grep, LSP, WebFetch</td>
+              <td>all() 并发生成器</td>
+              <td>10 并发</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-red">串行</span></td>
+              <td>Write, Edit, Bash, Agent</td>
+              <td>for...of 顺序执行</td>
+              <td>1 串行</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-purple">混合</span></td>
+              <td>同批次含两类工具</td>
+              <td>先并行后串行</td>
+              <td>按类型分区</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 5: Context Window Management
+         ====================================================== -->
+    <section class="section" id="context-window">
+      <h2><span class="icon">📐</span> 上下文窗口管理</h2>
+      <p class="section-intro">
+        Claude API 有严格的上下文窗口限制。QueryEngine 通过自动压缩追踪（auto-compact tracking）、响应式压缩（reactive compact）和输出截断恢复三重机制，确保长对话不会因为超出窗口而崩溃。
+      </p>
+
+      <div class="card">
+        <h4>自动压缩追踪 (Auto-Compact Tracking)</h4>
+        <div class="code-block">
+<span class="cm">// autoCompactTracking 状态字段</span><br>
+<span class="kw">interface</span> <span class="fn">AutoCompactState</span> {<br>
+&nbsp;&nbsp;<span class="fn">totalInputTokens</span>: <span class="tp">number</span>;       <span class="cm">// 累计输入 Token</span><br>
+&nbsp;&nbsp;<span class="fn">compactThreshold</span>: <span class="tp">number</span>;       <span class="cm">// 压缩触发阈值</span><br>
+&nbsp;&nbsp;<span class="fn">lastCompactAt</span>: <span class="tp">number</span>;          <span class="cm">// 上次压缩时的 Token 数</span><br>
+&nbsp;&nbsp;<span class="fn">compactCount</span>: <span class="tp">number</span>;           <span class="cm">// 压缩次数</span><br>
+}
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">
+          当累计输入 Token 超过阈值时，自动触发 compact 操作——将历史消息压缩为摘要，释放上下文窗口空间。
+        </p>
+      </div>
+
+      <div class="card">
+        <h4>响应式压缩 (Reactive Compact)</h4>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px">
+          当 API 返回上下文溢出错误时，QueryEngine 会尝试响应式压缩。通过 <code style="color:var(--accent-cyan)">hasAttemptedReactiveCompact</code> 标志确保每轮最多尝试一次，避免无限压缩循环。
+        </p>
+        <div class="hierarchy">
+          <div class="h-node" style="border-color:var(--accent-orange)">
+            🔴 上下文溢出<br>
+            <small style="color:var(--text-secondary)">API 返回 context overflow</small>
+          </div>
+          <div class="h-arrow">→</div>
+          <div class="h-node" style="border-color:var(--accent-blue)">
+            🔄 Reactive Compact<br>
+            <small style="color:var(--text-secondary)">压缩历史消息</small>
+          </div>
+          <div class="h-arrow">→</div>
+          <div class="h-node" style="border-color:var(--accent-green)">
+            ✅ 重试请求<br>
+            <small style="color:var(--text-secondary)">使用压缩后的消息</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>输出截断恢复</h4>
+        <div class="code-block">
+<span class="cm">// 最大结构化输出重试次数</span><br>
+<span class="kw">const</span> <span class="fn">MAX_STRUCTURED_OUTPUT_RETRIES</span> = <span class="num">5</span>;<br><br>
+<span class="cm">// 当 API 返回 max_tokens 截断时</span><br>
+<span class="cm">// maxOutputTokensRecoveryCount 递增</span><br>
+<span class="cm">// 尝试提高 maxOutputTokensOverride</span><br>
+<span class="cm">// 超过 5 次放弃恢复，返回截断结果</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <span class="badge badge-blue">maxOutputTokensRecoveryCount 追踪</span>
+          <span class="badge badge-purple">动态提升输出上限</span>
+          <span class="badge badge-orange">5 次重试上限</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 6: Abort & Cancel
+         ====================================================== -->
+    <section class="section" id="abort-cancel">
+      <h2><span class="icon">🛑</span> 中断与取消</h2>
+      <p class="section-intro">
+        QueryEngine 的中断机制基于 AbortController 三层层级设计。用户按 ESC 时，信号从根控制器向下传播，逐层取消正在执行的工具。每个工具可以声明自己的 <code style="color:var(--accent-cyan)">interruptBehavior</code>，决定如何响应中断信号。
+      </p>
+
+      <div class="card">
+        <h4>AbortController 三层层级详解</h4>
+        <table class="compare-table">
+          <thead>
+            <tr><th>层级</th><th>控制器</th><th>触发条件</th><th>影响范围</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-red">L1 根</span></td>
+              <td><code style="color:var(--accent-cyan)">toolUseContext.abortController</code></td>
+              <td>用户 ESC · 超时</td>
+              <td>取消所有工具</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">L2 兄弟</span></td>
+              <td><code style="color:var(--accent-cyan)">siblingAbortController</code></td>
+              <td>Bash 执行错误</td>
+              <td>取消同批次工具</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">L3 工具</span></td>
+              <td><code style="color:var(--accent-cyan)">toolAbortController</code></td>
+              <td>单工具超时/错误</td>
+              <td>仅取消当前工具</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>信号传播流程</h4>
+        <div class="code-block">
+<span class="cm">┌──────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span>  <span class="op">用户按 ESC</span>                                              <span class="cm">│</span><br>
+<span class="cm">│</span>      │                                                    <span class="cm">│</span><br>
+<span class="cm">│</span>      ▼                                                    <span class="cm">│</span><br>
+<span class="cm">│</span>  <span class="kw">toolUseContext.abortController.abort()</span>                   <span class="cm">│</span><br>
+<span class="cm">│</span>      │                                                    <span class="cm">│</span><br>
+<span class="cm">│</span>      ├──▶ <span class="fn">检查 interruptBehavior</span>                        <span class="cm">│</span><br>
+<span class="cm">│</span>      │    ├─ <span class="str">"abort"</span>    → 立即取消                      <span class="cm">│</span><br>
+<span class="cm">│</span>      │    ├─ <span class="str">"ignore"</span>   → 忽略信号，继续执行            <span class="cm">│</span><br>
+<span class="cm">│</span>      │    └─ <span class="str">"complete"</span>  → 等待当前操作完成后取消       <span class="cm">│</span><br>
+<span class="cm">│</span>      │                                                    <span class="cm">│</span><br>
+<span class="cm">│</span>      ├──▶ <span class="fn">siblingAbortController.abort()</span>                <span class="cm">│</span><br>
+<span class="cm">│</span>      │    └─ 取消同批次其他工具                             <span class="cm">│</span><br>
+<span class="cm">│</span>      │                                                    <span class="cm">│</span><br>
+<span class="cm">│</span>      └──▶ <span class="fn">toolAbortController.abort()</span>  (per-tool)       <span class="cm">│</span><br>
+<span class="cm">│</span>           └─ 取消单个工具执行                              <span class="cm">│</span><br>
+<span class="cm">└──────────────────────────────────────────────────────────┘</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>interruptBehavior 工具中断行为</h4>
+        <div class="grid-2">
+          <div class="tool-card" style="border-top:3px solid var(--accent-red)">
+            <h3 style="margin:0 0 4px;font-size:15px;color:var(--accent-red)">abort — 立即中断</h3>
+            <p style="font-size:13px;color:var(--text-secondary)">收到信号后立即终止执行。适用于：长时间运行的 Bash 命令、WebFetch 等 I/O 密集型工具。</p>
+          </div>
+          <div class="tool-card" style="border-top:3px solid var(--accent-green)">
+            <h3 style="margin:0 0 4px;font-size:15px;color:var(--accent-green)">ignore — 忽略信号</h3>
+            <p style="font-size:13px;color:var(--text-secondary)">完全忽略中断信号。适用于：关键写入操作（如 Write 工具的原子写入），避免半写状态。</p>
+          </div>
+          <div class="tool-card" style="border-top:3px solid var(--accent-blue)">
+            <h3 style="margin:0 0 4px;font-size:15px;color:var(--accent-blue)">complete — 优雅完成</h3>
+            <p style="font-size:13px;color:var(--text-secondary)">等待当前操作完成后再响应中断。适用于：Edit 工具（等待替换完成），Agent 工具（等待子 Agent 结束）。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 7: Error Recovery
+         ====================================================== -->
+    <section class="section" id="error-recovery">
+      <h2><span class="icon">🔁</span> 错误恢复机制</h2>
+      <p class="section-intro">
+        withRetry.ts 实现了 5 重错误恢复机制：指数退避重试、529 特殊处理、瞬态容量错误恢复、连接过期重建和自适应延迟。所有 API 调用都经过 withRetry 包装，确保瞬态故障不会导致整个对话中断。
+      </p>
+
+      <div class="card">
+        <h4>重试核心参数</h4>
+        <div class="code-block">
+<span class="cm">// withRetry.ts 核心常量</span><br>
+<span class="kw">const</span> <span class="fn">DEFAULT_MAX_RETRIES</span>  = <span class="num">10</span>;   <span class="cm">// 默认最大重试次数</span><br>
+<span class="kw">const</span> <span class="fn">BASE_DELAY_MS</span>       = <span class="num">500</span>;  <span class="cm">// 基础延迟 500ms</span><br>
+<span class="kw">const</span> <span class="fn">MAX_529_RETRIES</span>     = <span class="num">3</span>;    <span class="cm">// 529 状态码最大重试</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>指数退避策略</h4>
+        <div class="code-block">
+<span class="cm">// 退避延迟计算公式</span><br>
+<span class="fn">delay</span> = <span class="fn">BASE_DELAY_MS</span> × <span class="num">2</span>^<span class="fn">retryCount</span><br><br>
+<span class="cm">// 实际延迟序列：</span><br>
+<span class="cm">//   重试 0:   500ms</span><br>
+<span class="cm">//   重试 1:  1000ms  (1s)</span><br>
+<span class="cm">//   重试 2:  2000ms  (2s)</span><br>
+<span class="cm">//   重试 3:  4000ms  (4s)</span><br>
+<span class="cm">//   重试 4:  8000ms  (8s)</span><br>
+<span class="cm">//   重试 5: 16000ms (16s)</span><br>
+<span class="cm">//   ...以此类推到第 10 次</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>错误分类器</h4>
+        <table class="compare-table">
+          <thead>
+            <tr><th>分类器</th><th>检测条件</th><th>重试策略</th><th>上限</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-red">is529Error()</span></td>
+              <td>HTTP 529 过载</td>
+              <td>立即重试 + 短延迟</td>
+              <td><span class="badge badge-orange">3 次</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">isTransientCapacityError()</span></td>
+              <td>HTTP 429 / 503 瞬态</td>
+              <td>指数退避</td>
+              <td><span class="badge badge-blue">10 次</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-purple">isStaleConnectionError()</span></td>
+              <td>连接过期 / ECONNRESET</td>
+              <td>立即重试</td>
+              <td><span class="badge badge-blue">10 次</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">isOverloadedError()</span></td>
+              <td>服务端过载</td>
+              <td>长退避等待</td>
+              <td><span class="badge badge-blue">10 次</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-pink">isContextWindowError()</span></td>
+              <td>上下文溢出</td>
+              <td>触发 reactive compact</td>
+              <td><span class="badge badge-green">1 次</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>重试决策流程</h4>
+        <div class="code-block">
+<span class="cm">┌─────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span>  <span class="op">API 调用失败</span>                                       <span class="cm">│</span><br>
+<span class="cm">│</span>      │                                               <span class="cm">│</span><br>
+<span class="cm">│</span>      ▼                                               <span class="cm">│</span><br>
+<span class="cm">│</span>  <span class="fn">错误分类</span>                                            <span class="cm">│</span><br>
+<span class="cm">│</span>      ├─ <span class="kw">is529Error?</span>                                  <span class="cm">│</span><br>
+<span class="cm">│</span>      │  └─ <span class="str">retryCount529 &lt; 3?</span> → 重试 / 放弃         <span class="cm">│</span><br>
+<span class="cm">│</span>      ├─ <span class="kw">isTransientCapacity?</span>                         <span class="cm">│</span><br>
+<span class="cm">│</span>      │  └─ <span class="str">retryCount &lt; 10?</span> → 指数退避 / 放弃        <span class="cm">│</span><br>
+<span class="cm">│</span>      ├─ <span class="kw">isStaleConnection?</span>                           <span class="cm">│</span><br>
+<span class="cm">│</span>      │  └─ <span class="str">立即重建连接</span> → 重试                        <span class="cm">│</span><br>
+<span class="cm">│</span>      ├─ <span class="kw">isContextWindow?</span>                             <span class="cm">│</span><br>
+<span class="cm">│</span>      │  └─ <span class="str">reactive compact</span> → 重试 (仅 1 次)          <span class="cm">│</span><br>
+<span class="cm">│</span>      └─ <span class="op">其他错误</span> → 向上抛出                           <span class="cm">│</span><br>
+<span class="cm">└─────────────────────────────────────────────────────┘</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Section 8: Generator Utilities
+         ====================================================== -->
+    <section class="section" id="generator-utils">
+      <h2><span class="icon">🧰</span> 生成器工具链</h2>
+      <p class="section-intro">
+        generators.ts 提供了一组 AsyncGenerator 工具函数，是整个管道系统的基础设施。这些工具解决了 JavaScript 原生 AsyncGenerator 缺少的并发执行、返回值提取和数组转换等能力。
+      </p>
+
+      <div class="card">
+        <h4>all() — 并发生成器</h4>
+        <div class="code-block">
+<span class="kw">async</span> <span class="kw">function</span>* <span class="fn">all</span>&lt;<span class="tp">A</span>&gt;(<br>
+&nbsp;&nbsp;<span class="fn">generators</span>: <span class="tp">AsyncGenerator&lt;A&gt;[]</span>,<br>
+&nbsp;&nbsp;<span class="fn">cap</span>?: <span class="tp">number</span>  <span class="cm">// 并发上限，默认 Infinity</span><br>
+): <span class="tp">AsyncGenerator&lt;A&gt;</span><br><br>
+<span class="cm">// 用途：同时执行多个 AsyncGenerator，合并所有 yield 值</span><br>
+<span class="cm">// 实现：Promise.race + 事件队列</span><br>
+<span class="cm">// 场景：并发执行多个工具、并行文件读取</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>lastX() — 提取最后值</h4>
+        <div class="code-block">
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">lastX</span>&lt;<span class="tp">A</span>&gt;(<br>
+&nbsp;&nbsp;<span class="fn">generator</span>: <span class="tp">AsyncGenerator&lt;A&gt;</span><br>
+): <span class="tp">Promise&lt;A | undefined&gt;</span><br><br>
+<span class="cm">// 消费整个生成器，返回最后一个 yield 值</span><br>
+<span class="cm">// 用途：当只关心最终结果，不关心中间流式事件</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>returnValue() — 获取返回值</h4>
+        <div class="code-block">
+<span class="kw">async</span> <span class="kw">function</span> <span class="fn">returnValue</span>&lt;<span class="tp">Y</span>, <span class="tp">R</span>&gt;(<br>
+&nbsp;&nbsp;<span class="fn">generator</span>: <span class="tp">AsyncGenerator&lt;Y, R&gt;</span><br>
+): <span class="tp">Promise&lt;R&gt;</span><br><br>
+<span class="cm">// 消费整个生成器，忽略所有 yield 值，返回 return 值</span><br>
+<span class="cm">// 用途：当需要 query() 的终止信号 Terminal，但不消费流式事件</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>fromArray() — 数组转生成器</h4>
+        <div class="code-block">
+<span class="kw">async</span> <span class="kw">function</span>* <span class="fn">fromArray</span>&lt;<span class="tp">T</span>&gt;(<br>
+&nbsp;&nbsp;<span class="fn">items</span>: <span class="tp">T[]</span><br>
+): <span class="tp">AsyncGenerator&lt;T&gt;</span><br><br>
+<span class="cm">// 将普通数组转换为 AsyncGenerator</span><br>
+<span class="cm">// 用途：统一接口，使同步数据可以接入管道系统</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>工具链在管道中的位置</h4>
+        <div class="code-block">
+<span class="cm">┌──────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span>  <span class="kw">query()</span>                                                <span class="cm">│</span><br>
+<span class="cm">│</span>    └─ <span class="kw">queryLoop()</span>                                      <span class="cm">│</span><br>
+<span class="cm">│</span>         └─ <span class="kw">runTools()</span>                                   <span class="cm">│</span><br>
+<span class="cm">│</span>              ├─ <span class="fn">all()</span>        <span class="cm">← 并发执行并发安全工具</span>     <span class="cm">│</span><br>
+<span class="cm">│</span>              ├─ <span class="fn">lastX()</span>      <span class="cm">← 提取最终工具结果</span>       <span class="cm">│</span><br>
+<span class="cm">│</span>              ├─ <span class="fn">returnValue()</span> <span class="cm">← 获取管道终止信号</span>       <span class="cm">│</span><br>
+<span class="cm">│</span>              └─ <span class="fn">fromArray()</span>  <span class="cm">← 将工具结果转为生成器</span>   <span class="cm">│</span><br>
+<span class="cm">└──────────────────────────────────────────────────────────┘</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>设计评析</h4>
+        <div class="eval-section">
+          <div class="card eval-good" style="margin-bottom:0">
+            <h4>✅ 巧妙之处</h4>
+            <ul>
+              <li>AsyncGenerator 管道实现了真正的流式处理——UI 可以实时显示中间结果</li>
+              <li>all() 并发生成器巧妙解决了 JS 缺少并发 iterator 合并的问题</li>
+              <li>三层 AbortController 实现了精确的中断粒度控制</li>
+              <li>withRetry 错误分类器覆盖了几乎所有瞬态故障场景</li>
+              <li>partitionToolCalls 读写分离确保了并发安全性</li>
+              <li>Reactive compact 让长对话不会因上下文溢出而崩溃</li>
+            </ul>
+          </div>
+          <div class="card eval-bad" style="margin-bottom:0">
+            <h4>⚠️ 潜在问题</h4>
+            <ul>
+              <li>8 层递归管道的调试和错误追踪具有较高复杂度</li>
+              <li>AbortController 三层层级的信号传播可能存在竞态条件</li>
+              <li>10 次重试 × 指数退避最大等待约 8.5 分钟，用户体验存疑</li>
+              <li>autoCompactTracking 的压缩可能丢失重要的早期上下文</li>
+              <li>isConcurrencySafe 标志为硬编码，缺乏运行时动态评估能力</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         Footer
+         ====================================================== -->
+    <footer class="footer">
+      <a href="index.html" class="footer-back">← 返回深度报告导航中心</a>
+      <br>
+      <a href="../reports/index.html" class="footer-back" style="margin-top:6px;display:inline-flex">← 返回总报告导航中心</a>
+      <div class="footer-meta">
+        Claude Code <code>v2.1.88</code> · QueryEngine 核心引擎深度逆向 · 仅供技术研究用途<br>
+        基于公开 npm 包静态分析 · 未涉及任何非公开资源
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     JavaScript: Sidebar Scroll Tracking + Mobile Toggle
+     ============================================================ -->
+<script>
+(function () {
+  // IntersectionObserver — 侧边栏活跃状态追踪
+  var sections = document.querySelectorAll('.section');
+  var sidebarLinks = document.querySelectorAll('.sidebar a');
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        sidebarLinks.forEach(function (l) { l.classList.remove('active'); });
+        var link = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(function (s) { observer.observe(s); });
+
+  // Smooth scroll — 侧边栏链接点击
+  sidebarLinks.forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      // 移动端点击后关闭侧边栏
+      var sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('open');
+    });
+  });
+
+  // Mobile sidebar toggle
+  var toggleBtn = document.getElementById('sidebarToggle');
+  var sidebar = document.getElementById('sidebar');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
