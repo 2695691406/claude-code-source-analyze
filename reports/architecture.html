@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工程架构设计 — Claude Code v2.1.88 源码分析</title>
+<style>
+/* ========== CSS Variables / Theme ========== */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--accent-cyan);
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* ========== Particle Background ========== */
+.particle-bg {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  border-radius: 50%; background: var(--accent-blue);
+  opacity: 0; animation: particleFloat linear infinite;
+}
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+/* ========== Top Navigation ========== */
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue);
+  padding: 6px 14px;
+  background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 20px;
+  transition: all var(--transition);
+}
+.top-nav .back-link:hover {
+  background: rgba(88,166,255,0.15);
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+}
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title {
+  font-size: 0.9rem; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ========== Sidebar TOC ========== */
+.sidebar {
+  position: fixed; top: 56px; left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - 56px);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50;
+  padding: 24px 0;
+  transform: translateX(0);
+  transition: transform var(--transition);
+}
+.sidebar-title {
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 0 20px;
+  margin-bottom: 12px;
+}
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 20px; font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-left: 3px solid transparent;
+  transition: all var(--transition);
+}
+.sidebar-nav a:hover {
+  color: var(--text-primary);
+  background: rgba(88,166,255,0.05);
+  border-left-color: rgba(88,166,255,0.3);
+}
+.sidebar-nav a.active {
+  color: var(--accent-blue);
+  background: rgba(88,166,255,0.08);
+  border-left-color: var(--accent-blue);
+  font-weight: 600;
+}
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-tertiary); font-size: 0.7rem;
+  font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num {
+  background: rgba(88,166,255,0.15);
+  color: var(--accent-blue);
+}
+.sidebar-toggle {
+  display: none;
+  position: fixed; top: 62px; left: 12px;
+  z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--text-secondary); font-size: 1.1rem;
+  align-items: center; justify-content: center;
+}
+
+/* ========== Main Content ========== */
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: 56px;
+  padding: 0;
+  position: relative; z-index: 1;
+  min-height: calc(100vh - 56px);
+}
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ========== Header ========== */
+.page-header {
+  padding: 60px 0 40px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.page-header::before {
+  content: ''; position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow {
+  0%   { transform: translate(-5%, -5%) scale(1); }
+  100% { transform: translate(5%, 5%) scale(1.1); }
+}
+.page-header .badge {
+  display: inline-block; padding: 5px 14px;
+  background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle {
+  font-size: 1rem; color: var(--text-secondary);
+  max-width: 600px; margin: 0 auto;
+}
+.header-line {
+  width: 60px; height: 3px;
+  background: var(--gradient-primary);
+  margin: 24px auto 0; border-radius: 2px;
+}
+
+/* ========== Section ========== */
+.content-section {
+  padding: 56px 0 20px;
+  scroll-margin-top: 80px;
+}
+.section-title {
+  margin-bottom: 36px;
+}
+.section-title h2 {
+  font-size: 1.6rem; font-weight: 700;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+}
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p {
+  color: var(--text-secondary); font-size: 0.95rem;
+  margin-left: 52px;
+}
+
+/* ========== Fade In ========== */
+.fade-section {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.fade-section.visible {
+  opacity: 1; transform: translateY(0);
+}
+
+/* ========== Architecture Layers (Section 1) ========== */
+.layers-list { display: flex; flex-direction: column; gap: 0; }
+.layer-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.layer-item::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.layer-item:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.layer-head {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 8px;
+}
+.layer-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.layer-name { font-size: 1.1rem; font-weight: 700; }
+.layer-body {
+  margin-left: 50px;
+}
+.layer-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 6px; }
+.layer-files {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.layer-files span {
+  font-size: 0.78rem; padding: 3px 10px;
+  background: var(--bg-tertiary);
+  border-radius: 12px; color: var(--text-muted);
+}
+.layer-arrow {
+  display: flex; align-items: center; justify-content: center;
+  height: 32px; position: relative;
+}
+.layer-arrow::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+  opacity: 0.3;
+}
+.layer-arrow svg {
+  width: 16px; height: 16px; fill: none;
+  stroke: var(--accent-blue); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+/* Layer colors */
+.layer-1::before { background: var(--accent-blue); }
+.layer-1 .layer-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.layer-1:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+
+.layer-2::before { background: var(--accent-purple); }
+.layer-2 .layer-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.layer-2:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+
+.layer-3::before { background: var(--accent-green); }
+.layer-3 .layer-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.layer-3:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+
+.layer-4::before { background: var(--accent-cyan); }
+.layer-4 .layer-num { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+.layer-4:hover { box-shadow: 0 0 20px rgba(118,228,247,0.12); }
+
+.layer-5::before { background: var(--accent-orange); }
+.layer-5 .layer-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.layer-5:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+
+.layer-6::before { background: var(--accent-pink); }
+.layer-6 .layer-num { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+.layer-6:hover { box-shadow: 0 0 20px rgba(247,120,186,0.12); }
+
+.layer-7::before { background: var(--accent-yellow); }
+.layer-7 .layer-num { background: rgba(245,213,71,0.15); color: var(--accent-yellow); }
+.layer-7:hover { box-shadow: 0 0 20px rgba(245,213,71,0.12); }
+
+.layer-8::before { background: var(--accent-red); }
+.layer-8 .layer-num { background: rgba(255,123,114,0.15); color: var(--accent-red); }
+.layer-8:hover { box-shadow: 0 0 20px rgba(255,123,114,0.12); }
+
+/* ========== Bootstrap Flowchart (Section 2) ========== */
+.stage-cards { display: flex; flex-direction: column; gap: 24px; }
+.stage-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  position: relative; overflow: hidden;
+  transition: all var(--transition);
+}
+.stage-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-2px);
+}
+.stage-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+}
+.stage-1::before { background: var(--gradient-primary); }
+.stage-2::before { background: var(--gradient-green); }
+.stage-3::before { background: var(--gradient-warm); }
+.stage-1:hover { box-shadow: var(--glow-blue); }
+.stage-2:hover { box-shadow: var(--glow-green); }
+.stage-3:hover { box-shadow: 0 0 20px rgba(240,136,62,0.2); }
+.stage-head {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+}
+.stage-badge {
+  padding: 4px 12px; border-radius: 14px;
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.stage-1 .stage-badge { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.stage-2 .stage-badge { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.stage-3 .stage-badge { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.stage-file {
+  font-size: 1.15rem; font-weight: 700; color: var(--text-primary);
+}
+.stage-subtitle {
+  font-size: 0.85rem; color: var(--text-secondary);
+  margin-left: auto;
+}
+.flow-list { list-style: none; margin: 0; padding: 0; }
+.flow-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+  font-size: 0.9rem; color: var(--text-secondary);
+}
+.flow-list li:last-child { border-bottom: none; }
+.flow-icon {
+  flex-shrink: 0; margin-top: 2px;
+  font-size: 0.85rem; width: 20px; text-align: center;
+}
+.flow-list .flow-code { color: var(--accent-cyan); font-weight: 600; }
+.flow-list .flow-arrow { color: var(--accent-purple); margin: 0 4px; }
+
+/* Decision tree for stage 3 */
+.decision-tree {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px 20px; margin-top: 12px;
+}
+.decision-tree .dt-title {
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 10px;
+}
+.dt-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; font-size: 0.88rem;
+}
+.dt-cond {
+  padding: 2px 10px; border-radius: 10px;
+  font-size: 0.78rem; font-weight: 600;
+  background: var(--bg-tertiary); color: var(--accent-purple);
+  white-space: nowrap;
+}
+.dt-arrow-r { color: var(--accent-green); margin: 0 2px; }
+.dt-result { color: var(--text-secondary); }
+
+/* Stage connector arrow */
+.stage-connector {
+  display: flex; align-items: center; justify-content: center;
+  height: 36px; position: relative;
+}
+.stage-connector::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+  opacity: 0.25;
+}
+.stage-connector svg {
+  width: 18px; height: 18px; fill: none;
+  stroke: var(--accent-blue); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.5; position: relative; z-index: 1;
+  background: var(--bg-primary); border-radius: 50%;
+}
+
+/* ========== Core Data Flow (Section 3) ========== */
+.dataflow-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 32px 20px;
+  overflow-x: auto;
+}
+.dataflow-svg { display: block; margin: 0 auto; }
+
+/* ========== Module Dependencies (Section 4) ========== */
+.dep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.dep-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.dep-card::after {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 2px;
+}
+.dep-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+  box-shadow: var(--glow-blue);
+}
+.dep-name {
+  font-size: 0.95rem; font-weight: 700;
+  margin-bottom: 4px;
+}
+.dep-size {
+  font-size: 0.78rem; color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.dep-bar {
+  height: 4px; background: var(--bg-tertiary);
+  border-radius: 2px; overflow: hidden;
+}
+.dep-bar-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 1s ease;
+}
+.dep-deps {
+  margin-top: 8px; font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.dep-deps .dep-link {
+  color: var(--accent-blue); font-weight: 500;
+}
+
+/* Dependency flow lines */
+.dep-flow {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px;
+}
+.dep-flow-title {
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 16px;
+}
+.dep-chain {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 8px; margin-bottom: 10px;
+}
+.dep-chain-item {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; font-weight: 600;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.dep-chain-arrow {
+  color: var(--accent-purple); font-weight: 700;
+  font-size: 1rem;
+}
+
+/* ========== Security Pipeline (Section 5) ========== */
+.security-pipeline { display: flex; flex-direction: column; gap: 0; }
+.sec-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  transition: all var(--transition);
+  position: relative;
+}
+.sec-item:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.sec-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 6px;
+}
+.sec-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 800; flex-shrink: 0;
+  background: rgba(126,231,135,0.12); color: var(--accent-green);
+}
+.sec-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.sec-tag {
+  margin-left: auto; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 10px; border-radius: 10px;
+  background: var(--bg-tertiary); color: var(--text-muted);
+}
+.sec-desc {
+  font-size: 0.88rem; color: var(--text-secondary);
+  margin-left: 44px;
+}
+.sec-arrow {
+  display: flex; align-items: center; justify-content: center;
+  height: 28px; position: relative;
+}
+.sec-arrow::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-green), var(--accent-cyan));
+  opacity: 0.25;
+}
+.sec-arrow svg {
+  width: 14px; height: 14px; fill: none;
+  stroke: var(--accent-green); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+/* ========== Compression Pipeline (Section 6) ========== */
+.compress-pipeline {
+  display: flex; flex-direction: column; gap: 16px;
+}
+.compress-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.compress-card::before {
+  content: ''; position: absolute;
+  left: 0; top: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.compress-card:nth-child(1)::before { background: var(--accent-blue); }
+.compress-card:nth-child(2)::before { background: var(--accent-purple); }
+.compress-card:nth-child(3)::before { background: var(--accent-green); }
+.compress-card:nth-child(4)::before { background: var(--accent-orange); }
+.compress-card:nth-child(5)::before { background: var(--accent-red); }
+.compress-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.compress-num {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
+  background: var(--bg-secondary);
+}
+.compress-card:nth-child(1) .compress-num { color: var(--accent-blue); }
+.compress-card:nth-child(2) .compress-num { color: var(--accent-purple); }
+.compress-card:nth-child(3) .compress-num { color: var(--accent-green); }
+.compress-card:nth-child(4) .compress-num { color: var(--accent-orange); }
+.compress-card:nth-child(5) .compress-num { color: var(--accent-red); }
+.compress-info { flex: 1; min-width: 0; }
+.compress-name {
+  font-size: 1rem; font-weight: 700; margin-bottom: 2px;
+}
+.compress-en {
+  font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;
+}
+.compress-desc {
+  font-size: 0.88rem; color: var(--text-secondary);
+}
+
+/* ========== Performance (Section 7) ========== */
+.perf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.perf-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.perf-card::after {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(135deg, transparent 60%, rgba(88,166,255,0.03) 100%);
+  pointer-events: none;
+}
+.perf-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+  box-shadow: var(--glow-blue);
+}
+.perf-icon {
+  font-size: 1.8rem; margin-bottom: 12px; display: block;
+}
+.perf-name {
+  font-size: 1.05rem; font-weight: 700; margin-bottom: 4px;
+}
+.perf-en {
+  font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;
+}
+.perf-desc {
+  font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;
+}
+
+/* ========== Evaluation (Section 8) ========== */
+.eval-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+}
+.eval-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.eval-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+}
+.eval-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+}
+.eval-pros::before { background: var(--gradient-green); }
+.eval-pros:hover { box-shadow: var(--glow-green); }
+.eval-cons::before { background: linear-gradient(90deg, var(--accent-orange), var(--accent-red)); }
+.eval-cons:hover { box-shadow: 0 0 20px rgba(240,136,62,0.2); }
+.eval-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1.15rem; font-weight: 700;
+  margin-bottom: 16px;
+}
+.eval-list { list-style: none; }
+.eval-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  font-size: 0.9rem; color: var(--text-secondary);
+  line-height: 1.6;
+}
+.eval-list li:last-child { border-bottom: none; }
+.eval-list .eval-icon {
+  flex-shrink: 0; margin-top: 3px; font-size: 0.85rem;
+}
+
+/* ========== Footer ========== */
+.footer {
+  padding: 48px 0; text-align: center;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer p {
+  color: var(--text-muted); font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.footer .footer-brand {
+  font-weight: 600;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .eval-grid { grid-template-columns: 1fr; }
+  .perf-grid { grid-template-columns: 1fr; }
+  .dep-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .dep-chain { gap: 6px; }
+  .dep-chain-item { font-size: 0.78rem; padding: 4px 10px; }
+  .stage-head { flex-wrap: wrap; }
+  .stage-subtitle { margin-left: 0; }
+  .top-nav .page-title { display: none; }
+}
+@media (max-width: 480px) {
+  .dep-grid { grid-template-columns: 1fr 1fr; }
+  .layer-body { margin-left: 0; margin-top: 8px; }
+  .layer-head { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<!-- Particle Background -->
+<div class="particle-bg" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<!-- ==================== Top Navigation ==================== -->
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l4-4m-4 4l4 4"/></svg>
+    返回首页
+  </a>
+  <span class="page-title">工程架构设计 — Claude Code v2.1.88</span>
+</nav>
+
+<!-- Sidebar Toggle (mobile) -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+
+<!-- ==================== Sidebar TOC ==================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-layers"><span class="toc-num">1</span>分层架构详解</a></li>
+    <li><a href="#sec-bootstrap"><span class="toc-num">2</span>启动流程三阶段</a></li>
+    <li><a href="#sec-dataflow"><span class="toc-num">3</span>核心数据流</a></li>
+    <li><a href="#sec-deps"><span class="toc-num">4</span>模块依赖关系</a></li>
+    <li><a href="#sec-security"><span class="toc-num">5</span>七层安全架构</a></li>
+    <li><a href="#sec-compress"><span class="toc-num">6</span>五层压缩流水线</a></li>
+    <li><a href="#sec-perf"><span class="toc-num">7</span>性能优化策略</a></li>
+    <li><a href="#sec-eval"><span class="toc-num">8</span>设计评析</a></li>
+  </ul>
+</aside>
+
+<!-- ==================== Main Content ==================== -->
+<main class="main-content">
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="badge">ARCHITECTURE ANALYSIS</div>
+      <h1>🏗️ 工程架构设计分析</h1>
+      <p class="subtitle">深入剖析 Claude Code 的 8 层分层架构、启动流程、数据流、安全模型与性能优化策略</p>
+      <div class="header-line"></div>
+    </div>
+  </header>
+
+  <!-- ==================== 1. 分层架构详解 ==================== -->
+  <section class="content-section fade-section" id="sec-layers">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🏛️</span>
+          分层架构详解
+        </h2>
+        <p>8 层架构设计，清晰的职责分离与数据流向</p>
+      </div>
+
+      <div class="layers-list">
+        <!-- Layer 1 -->
+        <div class="layer-item layer-1">
+          <div class="layer-head">
+            <span class="layer-num">1</span>
+            <span class="layer-name">👤 用户层 User Layer</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">终端 CLI 输入、语音交互、Web Bridge 接口 — 所有用户交互的统一入口</p>
+            <div class="layer-files">
+              <span>CLI 终端输入</span>
+              <span>语音 Voice</span>
+              <span>Web Bridge</span>
+              <span>IDE 扩展</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 2 -->
+        <div class="layer-item layer-2">
+          <div class="layer-head">
+            <span class="layer-num">2</span>
+            <span class="layer-name">🚪 入口层 Entrypoint</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc"><code>cli.tsx</code>（快速路径判断）→ <code>init.ts</code>（配置加载）→ <code>main.tsx</code>（完整初始化）</p>
+            <div class="layer-files">
+              <span>cli.tsx</span>
+              <span>init.ts</span>
+              <span>main.tsx (4683 LOC)</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 3 -->
+        <div class="layer-item layer-3">
+          <div class="layer-head">
+            <span class="layer-num">3</span>
+            <span class="layer-name">⌨️ 命令层 Command Layer</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">CommandRegistry 管理 86+ 命令，支持 6 种注册来源统一路由</p>
+            <div class="layer-files">
+              <span>core 核心命令</span>
+              <span>root 根命令</span>
+              <span>skills 技能</span>
+              <span>plugins 插件</span>
+              <span>workflows 工作流</span>
+              <span>MCP 协议</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 4 -->
+        <div class="layer-item layer-4">
+          <div class="layer-head">
+            <span class="layer-num">4</span>
+            <span class="layer-name">🔍 查询引擎 QueryEngine</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">核心编排中枢（1,295 LOC），每个会话/Agent 独立实例，<code>submitMessage()</code> 为统一入口</p>
+            <div class="layer-files">
+              <span>QueryEngine (1,295 LOC)</span>
+              <span>submitMessage()</span>
+              <span>query() 工具循环</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 5 -->
+        <div class="layer-item layer-5">
+          <div class="layer-head">
+            <span class="layer-num">5</span>
+            <span class="layer-name">🤖 工具 / 服务 / Agent 层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">43+ 工具、21+ 服务、多类型 Agent（sync / async / remote / teammate）</p>
+            <div class="layer-files">
+              <span>43+ 工具</span>
+              <span>21+ 服务</span>
+              <span>sync Agent</span>
+              <span>async Agent</span>
+              <span>remote Agent</span>
+              <span>teammate Agent</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 6 -->
+        <div class="layer-item layer-6">
+          <div class="layer-head">
+            <span class="layer-num">6</span>
+            <span class="layer-name">📊 状态管理层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">React Context + AppState（Zustand-like 模式），不可变更新确保状态一致性</p>
+            <div class="layer-files">
+              <span>React Context</span>
+              <span>AppState</span>
+              <span>不可变更新模式</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 7 -->
+        <div class="layer-item layer-7">
+          <div class="layer-head">
+            <span class="layer-num">7</span>
+            <span class="layer-name">⚙️ 基础设施层</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">API 客户端（多供应商适配）、MCP 协议、OAuth 认证、文件系统、Git 集成</p>
+            <div class="layer-files">
+              <span>API Client</span>
+              <span>MCP 协议</span>
+              <span>OAuth</span>
+              <span>文件系统</span>
+              <span>Git 集成</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <!-- Layer 8 -->
+        <div class="layer-item layer-8">
+          <div class="layer-head">
+            <span class="layer-num">8</span>
+            <span class="layer-name">🎨 渲染层 React + Ink</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">React + Ink 终端 UI 框架，80+ 组件、80+ Hooks，完整的终端渲染系统</p>
+            <div class="layer-files">
+              <span>80+ 组件</span>
+              <span>80+ Hooks</span>
+              <span>Markdown 渲染</span>
+              <span>主题系统</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. 启动流程三阶段 ==================== -->
+  <section class="content-section fade-section" id="sec-bootstrap">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">🚀</span>
+          启动流程三阶段
+        </h2>
+        <p>三阶段渐进式初始化，避免不必要的性能开销</p>
+      </div>
+
+      <div class="stage-cards">
+        <!-- Stage 1 -->
+        <div class="stage-card stage-1">
+          <div class="stage-head">
+            <span class="stage-badge">Stage 1</span>
+            <span class="stage-file">cli.tsx</span>
+            <span class="stage-subtitle">快速路径判断</span>
+          </div>
+          <ul class="flow-list">
+            <li>
+              <span class="flow-icon">⚡</span>
+              <span><code>--version</code> <span class="flow-arrow">→</span> 直接输出版本号并退出</span>
+            </li>
+            <li>
+              <span class="flow-icon">📋</span>
+              <span><code>--dump-system-prompt</code> <span class="flow-arrow">→</span> 输出系统提示并退出</span>
+            </li>
+            <li>
+              <span class="flow-icon">🔌</span>
+              <span><code>--claude-in-chrome-mcp</code> <span class="flow-arrow">→</span> 启动 MCP 服务器模式</span>
+            </li>
+            <li>
+              <span class="flow-icon">➡️</span>
+              <span>否则 <span class="flow-arrow">→</span> 进入 Stage 2 完整初始化</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="stage-connector">
+          <svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="stage-card stage-2">
+          <div class="stage-head">
+            <span class="stage-badge">Stage 2</span>
+            <span class="stage-file">init.ts</span>
+            <span class="stage-subtitle">配置加载</span>
+          </div>
+          <ul class="flow-list">
+            <li>
+              <span class="flow-icon">🔗</span>
+              <span>preAction hook: <strong>MDM + Keychain 并行加载</strong>，减少初始化延迟</span>
+            </li>
+            <li>
+              <span class="flow-icon">☁️</span>
+              <span>Remote settings <strong>异步获取</strong>，不阻塞主线程</span>
+            </li>
+            <li>
+              <span class="flow-icon">🔍</span>
+              <span>环境检测与初始化：操作系统、终端类型、Git 状态等</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="stage-connector">
+          <svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="stage-card stage-3">
+          <div class="stage-head">
+            <span class="stage-badge">Stage 3</span>
+            <span class="stage-file">main.tsx</span>
+            <span class="stage-subtitle">完整初始化</span>
+          </div>
+          <ul class="flow-list">
+            <li>
+              <span class="flow-icon">🌲</span>
+              <span>模式选择决策树：根据参数和环境选择运行模式</span>
+            </li>
+          </ul>
+          <div class="decision-tree">
+            <div class="dt-title">模式选择决策树</div>
+            <div class="dt-row">
+              <span class="dt-cond">--bare</span>
+              <span class="dt-arrow-r">→</span>
+              <span class="dt-result">SIMPLE 模式（最小化运行）</span>
+            </div>
+            <div class="dt-row">
+              <span class="dt-cond">KAIROS 标志</span>
+              <span class="dt-arrow-r">→</span>
+              <span class="dt-result">助手模式（定时任务）</span>
+            </div>
+            <div class="dt-row">
+              <span class="dt-cond">--print</span>
+              <span class="dt-arrow-r">→</span>
+              <span class="dt-result">Print 模式（单次输出）</span>
+            </div>
+            <div class="dt-row">
+              <span class="dt-cond">SDK 调用</span>
+              <span class="dt-arrow-r">→</span>
+              <span class="dt-result">SDK 模式（编程接口）</span>
+            </div>
+            <div class="dt-row">
+              <span class="dt-cond">Bridge</span>
+              <span class="dt-arrow-r">→</span>
+              <span class="dt-result">远程模式（Web 桥接）</span>
+            </div>
+            <div class="dt-row">
+              <span class="dt-cond">默认</span>
+              <span class="dt-arrow-r">→</span>
+              <span class="dt-result">REPL 模式（交互式终端）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. 核心数据流 ==================== -->
+  <section class="content-section fade-section" id="sec-dataflow">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">🔄</span>
+          核心数据流
+        </h2>
+        <p>从用户输入到渲染输出的完整请求处理链路</p>
+      </div>
+
+      <div class="dataflow-wrapper">
+        <svg class="dataflow-svg" viewBox="0 0 880 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:880px;height:auto;">
+          <defs>
+            <linearGradient id="gBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#58a6ff"/>
+              <stop offset="100%" stop-color="#bc8cff"/>
+            </linearGradient>
+            <linearGradient id="gGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#7ee787"/>
+              <stop offset="100%" stop-color="#58a6ff"/>
+            </linearGradient>
+            <linearGradient id="gWarm" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#f0883e"/>
+              <stop offset="100%" stop-color="#f778ba"/>
+            </linearGradient>
+            <linearGradient id="gCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#76e4f7"/>
+              <stop offset="100%" stop-color="#58a6ff"/>
+            </linearGradient>
+            <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L8,3 L0,6" fill="#58a6ff"/>
+            </marker>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- Row 1 -->
+          <rect x="20" y="20" width="140" height="56" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+          <text x="90" y="43" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">👤 用户输入</text>
+          <text x="90" y="60" text-anchor="middle" fill="#8b949e" font-size="10">User Input</text>
+
+          <line x1="160" y1="48" x2="195" y2="48" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+
+          <rect x="200" y="20" width="180" height="56" rx="12" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+          <text x="290" y="43" text-anchor="middle" fill="#bc8cff" font-size="12" font-weight="700">processUserInput</text>
+          <text x="290" y="60" text-anchor="middle" fill="#8b949e" font-size="10">输入预处理</text>
+
+          <line x1="380" y1="48" x2="415" y2="48" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+
+          <rect x="420" y="10" width="200" height="76" rx="12" fill="#161b22" stroke="#7ee787" stroke-width="1.5"/>
+          <text x="520" y="36" text-anchor="middle" fill="#7ee787" font-size="12" font-weight="700">CommandRegistry</text>
+          <text x="520" y="54" text-anchor="middle" fill="#8b949e" font-size="10">斜杠命令判断?</text>
+          <text x="520" y="72" text-anchor="middle" fill="#6e7681" font-size="9">是 → 直接执行 | 否 → 下一步</text>
+
+          <line x1="620" y1="48" x2="655" y2="48" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+
+          <rect x="660" y="20" width="200" height="56" rx="12" fill="#161b22" stroke="#76e4f7" stroke-width="1.5"/>
+          <text x="760" y="43" text-anchor="middle" fill="#76e4f7" font-size="12" font-weight="700">QueryEngine</text>
+          <text x="760" y="60" text-anchor="middle" fill="#8b949e" font-size="10">submitMessage()</text>
+
+          <!-- Row 2: query loop -->
+          <line x1="760" y1="76" x2="760" y2="120" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+
+          <rect x="620" y="124" width="280" height="56" rx="12" fill="#161b22" stroke="#f0883e" stroke-width="1.5"/>
+          <text x="760" y="148" text-anchor="middle" fill="#f0883e" font-size="12" font-weight="700">🔄 query() 工具循环</text>
+          <text x="760" y="165" text-anchor="middle" fill="#8b949e" font-size="10">Tool Use Loop — 多轮调用直到完成</text>
+
+          <!-- Loop arrow -->
+          <path d="M900,152 Q920,152 920,130 Q920,108 900,108" fill="none" stroke="#f0883e" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+          <text x="935" y="132" fill="#f0883e" font-size="9" opacity="0.7">循环</text>
+
+          <!-- Row 3 -->
+          <line x1="760" y1="180" x2="760" y2="220" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+
+          <rect x="560" y="224" width="200" height="56" rx="12" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+          <text x="660" y="248" text-anchor="middle" fill="#bc8cff" font-size="12" font-weight="700">☁️ Claude API</text>
+          <text x="660" y="265" text-anchor="middle" fill="#8b949e" font-size="10">流式调用 (Streaming)</text>
+
+          <rect x="200" y="224" width="180" height="56" rx="12" fill="#161b22" stroke="#f0883e" stroke-width="1.5"/>
+          <text x="290" y="248" text-anchor="middle" fill="#f0883e" font-size="12" font-weight="700">🔧 工具执行</text>
+          <text x="290" y="265" text-anchor="middle" fill="#8b949e" font-size="10">Tool Execution</text>
+
+          <line x1="560" y1="252" x2="385" y2="252" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+          <text x="472" y="244" text-anchor="middle" fill="#6e7681" font-size="9">tool_use</text>
+
+          <!-- feedback loop -->
+          <path d="M290,280 L290,300 Q290,310 300,310 L650,310 Q660,310 660,300 L660,280" fill="none" stroke="#7ee787" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arrowBlue)" opacity="0.5"/>
+          <text x="475" y="324" text-anchor="middle" fill="#7ee787" font-size="9" opacity="0.8">结果反馈 → 继续循环</text>
+
+          <!-- Row 4 -->
+          <line x1="290" y1="280" x2="290" y2="355" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowBlue)" opacity="0.7"/>
+
+          <rect x="160" y="355" width="260" height="56" rx="12" fill="#161b22" stroke="#ff7b72" stroke-width="1.5"/>
+          <text x="290" y="378" text-anchor="middle" fill="#ff7b72" font-size="12" font-weight="700">🎨 渲染输出</text>
+          <text x="290" y="396" text-anchor="middle" fill="#8b949e" font-size="10">React + Ink 终端 UI 渲染</text>
+
+          <!-- Labels -->
+          <rect x="20" y="130" width="140" height="44" rx="8" fill="rgba(88,166,255,0.06)" stroke="rgba(88,166,255,0.15)" stroke-width="1"/>
+          <text x="90" y="148" text-anchor="middle" fill="#58a6ff" font-size="10" font-weight="600">权限检查</text>
+          <text x="90" y="163" text-anchor="middle" fill="#6e7681" font-size="9">Security Pipeline</text>
+
+          <line x1="160" y1="152" x2="618" y2="152" stroke="rgba(88,166,255,0.15)" stroke-width="1" stroke-dasharray="3,3"/>
+
+          <rect x="20" y="240" width="140" height="44" rx="8" fill="rgba(126,231,135,0.06)" stroke="rgba(126,231,135,0.15)" stroke-width="1"/>
+          <text x="90" y="258" text-anchor="middle" fill="#7ee787" font-size="10" font-weight="600">上下文压缩</text>
+          <text x="90" y="273" text-anchor="middle" fill="#6e7681" font-size="9">Context Compress</text>
+
+          <line x1="160" y1="262" x2="198" y2="262" stroke="rgba(126,231,135,0.15)" stroke-width="1" stroke-dasharray="3,3"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 4. 模块依赖关系 ==================== -->
+  <section class="content-section fade-section" id="sec-deps">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">🔗</span>
+          模块依赖关系
+        </h2>
+        <p>25 个核心模块的依赖拓扑与代码规模</p>
+      </div>
+
+      <!-- Dependency Flow -->
+      <div class="dep-flow">
+        <div class="dep-flow-title">核心依赖链路</div>
+        <div class="dep-chain">
+          <span class="dep-chain-item" style="border-color:rgba(188,140,255,0.4);color:var(--accent-purple);">entrypoints/ (53K)</span>
+          <span class="dep-chain-arrow">→</span>
+          <span class="dep-chain-item" style="border-color:rgba(126,231,135,0.4);color:var(--accent-green);">commands/ (3.3MB)</span>
+          <span class="dep-chain-arrow">→</span>
+          <span class="dep-chain-item" style="border-color:rgba(240,136,62,0.4);color:var(--accent-orange);">tools/ (3.2MB)</span>
+        </div>
+        <div class="dep-chain">
+          <span class="dep-chain-item" style="border-color:rgba(240,136,62,0.4);color:var(--accent-orange);">tools/</span>
+          <span class="dep-chain-arrow">→</span>
+          <span class="dep-chain-item" style="border-color:rgba(118,228,247,0.4);color:var(--accent-cyan);">services/ (2.2MB)</span>
+          <span class="dep-chain-arrow">→</span>
+          <span class="dep-chain-item" style="border-color:rgba(245,213,71,0.4);color:var(--accent-yellow);">utils/ (7.8MB)</span>
+        </div>
+        <div class="dep-chain">
+          <span class="dep-chain-item" style="border-color:rgba(255,123,114,0.4);color:var(--accent-red);">components/ (11MB)</span>
+          <span class="dep-chain-arrow">→</span>
+          <span class="dep-chain-item" style="border-color:rgba(247,120,186,0.4);color:var(--accent-pink);">hooks/ (1.5MB)</span>
+          <span class="dep-chain-arrow">→</span>
+          <span class="dep-chain-item" style="border-color:rgba(247,120,186,0.4);color:var(--accent-pink);">state/ (76KB)</span>
+        </div>
+      </div>
+
+      <!-- Module Grid -->
+      <div class="dep-grid">
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-red);">components/</div>
+          <div class="dep-size">11 MB — 最大模块</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:100%;background:var(--accent-red);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">hooks, state</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-yellow);">utils/</div>
+          <div class="dep-size">7.8 MB — 工具库</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:71%;background:var(--accent-yellow);"></div></div>
+          <div class="dep-deps">被广泛依赖</div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-green);">commands/</div>
+          <div class="dep-size">3.3 MB — 命令体系</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:30%;background:var(--accent-green);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">tools, services</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-orange);">tools/</div>
+          <div class="dep-size">3.2 MB — 工具实现</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:29%;background:var(--accent-orange);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">services, utils</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-cyan);">services/</div>
+          <div class="dep-size">2.2 MB — 核心服务</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:20%;background:var(--accent-cyan);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">utils</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-pink);">hooks/</div>
+          <div class="dep-size">1.5 MB — React Hooks</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:14%;background:var(--accent-pink);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">state, services</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-blue);">bridge/</div>
+          <div class="dep-size">536 KB — Web 桥接</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:5%;background:var(--accent-blue);"></div></div>
+          <div class="dep-deps">独立模块</div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-blue);">cli/</div>
+          <div class="dep-size">536 KB — CLI 框架</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:5%;background:var(--accent-blue);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">commands</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-orange);">tasks/</div>
+          <div class="dep-size">368 KB — 任务系统</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:3.3%;background:var(--accent-orange);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">services</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-green);">skills/</div>
+          <div class="dep-size">208 KB — 技能扩展</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:1.9%;background:var(--accent-green);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">tools</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-purple);">types/</div>
+          <div class="dep-size">172 KB — 类型定义</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:1.6%;background:var(--accent-purple);"></div></div>
+          <div class="dep-deps">被所有模块依赖</div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-yellow);">constants/</div>
+          <div class="dep-size">164 KB — 常量配置</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:1.5%;background:var(--accent-yellow);"></div></div>
+          <div class="dep-deps">被广泛引用</div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-cyan);">context/</div>
+          <div class="dep-size">128 KB — 上下文管理</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:1.2%;background:var(--accent-cyan);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">state</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-pink);">state/</div>
+          <div class="dep-size">76 KB — 状态核心</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:0.7%;background:var(--accent-pink);"></div></div>
+          <div class="dep-deps">核心状态层</div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-purple);">entrypoints/</div>
+          <div class="dep-size">53 KB — 入口文件</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:0.5%;background:var(--accent-purple);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">commands</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-green);">coordinator/</div>
+          <div class="dep-size">24 KB — 多 Agent 协调</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:0.2%;background:var(--accent-green);"></div></div>
+          <div class="dep-deps">依赖: <span class="dep-link">services</span></div>
+        </div>
+        <div class="dep-card">
+          <div class="dep-name" style="color:var(--accent-orange);">plugins/</div>
+          <div class="dep-size">20 KB — 插件系统</div>
+          <div class="dep-bar"><div class="dep-bar-fill" style="width:0.2%;background:var(--accent-orange);"></div></div>
+          <div class="dep-deps">扩展点</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5. 七层安全架构 ==================== -->
+  <section class="content-section fade-section" id="sec-security">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">🛡️</span>
+          七层安全架构
+        </h2>
+        <p>纵深防御策略，每一层独立生效确保安全</p>
+      </div>
+
+      <div class="security-pipeline">
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">1</span>
+            <span class="sec-name">工具池过滤</span>
+            <span class="sec-tag">filterToolsByDenyRules</span>
+          </div>
+          <p class="sec-desc">编译时移除危险工具，从源头控制可用工具集，不合规工具永远不会出现在候选列表中</p>
+        </div>
+        <div class="sec-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">2</span>
+            <span class="sec-name">输入验证</span>
+            <span class="sec-tag">Zod Schema</span>
+          </div>
+          <p class="sec-desc">基于 Zod Schema 的类型安全参数校验，确保工具接收的参数格式和类型完全正确</p>
+        </div>
+        <div class="sec-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">3</span>
+            <span class="sec-name">权限模式快速路径</span>
+            <span class="sec-tag">5 种模式</span>
+          </div>
+          <p class="sec-desc">manual / ask / auto / bypass / plan — 5 种权限模式快速判断，避免重复确认</p>
+        </div>
+        <div class="sec-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">4</span>
+            <span class="sec-name">工具级检查</span>
+            <span class="sec-tag">Per-Tool Logic</span>
+          </div>
+          <p class="sec-desc">每个工具自定义权限逻辑 — 如文件写入工具检查路径、Bash 工具检查命令安全性</p>
+        </div>
+        <div class="sec-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">5</span>
+            <span class="sec-name">规则匹配</span>
+            <span class="sec-tag">7 级优先级</span>
+          </div>
+          <p class="sec-desc">policy &gt; user &gt; project &gt; local &gt; flag &gt; command &gt; session — 7 级优先级规则匹配系统</p>
+        </div>
+        <div class="sec-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">6</span>
+            <span class="sec-name">PreToolUse Hooks</span>
+            <span class="sec-tag">外部扩展</span>
+          </div>
+          <p class="sec-desc">外部安全检查扩展点，允许第三方插件或企业策略在工具执行前进行拦截和审计</p>
+        </div>
+        <div class="sec-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="sec-item">
+          <div class="sec-head">
+            <span class="sec-num">7</span>
+            <span class="sec-name">分类器 / 用户确认</span>
+            <span class="sec-tag">最终决策</span>
+          </div>
+          <p class="sec-desc">YOLO 模式自动分类放行，或交互式弹出确认对话框由用户手动决定是否执行</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 6. 五层压缩流水线 ==================== -->
+  <section class="content-section fade-section" id="sec-compress">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">📦</span>
+          五层压缩流水线
+        </h2>
+        <p>多策略协同，平衡信息保留与 Token 效率</p>
+      </div>
+
+      <div class="compress-pipeline">
+        <div class="compress-card">
+          <span class="compress-num">1</span>
+          <div class="compress-info">
+            <div class="compress-name">工具结果预算</div>
+            <div class="compress-en">Tool Result Budget</div>
+            <div class="compress-desc">单次工具输出超限截断 — 当某个工具返回过长结果时，按预设 Token 预算截断，保留头部和尾部关键信息</div>
+          </div>
+        </div>
+        <div class="compress-card">
+          <span class="compress-num">2</span>
+          <div class="compress-info">
+            <div class="compress-name">Snip 压缩</div>
+            <div class="compress-en">History Snip</div>
+            <div class="compress-desc">旧对话历史渐进式修剪 — 从最早的消息开始逐步移除，保留最近的上下文以维持对话连贯性</div>
+          </div>
+        </div>
+        <div class="compress-card">
+          <span class="compress-num">3</span>
+          <div class="compress-info">
+            <div class="compress-name">微压缩</div>
+            <div class="compress-en">Microcompact</div>
+            <div class="compress-desc">按工具类型的时间窗口清理 — 对不同类型的工具输出设置不同的保留时间窗，过期内容自动移除</div>
+          </div>
+        </div>
+        <div class="compress-card">
+          <span class="compress-num">4</span>
+          <div class="compress-info">
+            <div class="compress-name">上下文折叠</div>
+            <div class="compress-en">Context Collapse</div>
+            <div class="compress-desc">读时投影，延迟物化 — 不立即删除内容，而是在读取时才决定哪些内容需要展示，实现无损压缩效果</div>
+          </div>
+        </div>
+        <div class="compress-card">
+          <span class="compress-num">5</span>
+          <div class="compress-info">
+            <div class="compress-name">自动压缩</div>
+            <div class="compress-en">Auto Compaction</div>
+            <div class="compress-desc">Token 阈值触发全局压缩 — 当总上下文长度接近模型限制时，使用 LLM 对全部历史进行摘要式压缩</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 7. 性能优化策略 ==================== -->
+  <section class="content-section fade-section" id="sec-perf">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(245,213,71,0.12);color:var(--accent-yellow);">⚡</span>
+          性能优化策略
+        </h2>
+        <p>多维度性能优化，兼顾启动速度与运行效率</p>
+      </div>
+
+      <div class="perf-grid">
+        <div class="perf-card">
+          <span class="perf-icon">🏎️</span>
+          <div class="perf-name">快速路径</div>
+          <div class="perf-en">Fast Paths</div>
+          <p class="perf-desc"><code>cli.tsx</code> 中的 <code>--version</code> 等命令直接输出退出，无需加载完整初始化链路，毫秒级响应</p>
+        </div>
+        <div class="perf-card">
+          <span class="perf-icon">⚡</span>
+          <div class="perf-name">并行初始化</div>
+          <div class="perf-en">Parallel Init</div>
+          <p class="perf-desc">MDM + Keychain 并行加载，Remote settings 异步获取，多个独立初始化任务同时进行</p>
+        </div>
+        <div class="perf-card">
+          <span class="perf-icon">💾</span>
+          <div class="perf-name">Prompt 缓存稳定性</div>
+          <div class="perf-en">Cache Stability</div>
+          <p class="perf-desc">工具池排序策略确保缓存键稳定，相同的工具集合始终产生相同的缓存 key，最大化缓存命中率</p>
+        </div>
+        <div class="perf-card">
+          <span class="perf-icon">🔮</span>
+          <div class="perf-name">投机执行</div>
+          <div class="perf-en">Speculation</div>
+          <p class="perf-desc">用户输入时预测并预启动 API 调用，在用户仍在输入时就开始准备请求，减少感知延迟</p>
+        </div>
+        <div class="perf-card">
+          <span class="perf-icon">💤</span>
+          <div class="perf-name">延迟加载</div>
+          <div class="perf-en">Lazy Loading</div>
+          <p class="perf-desc"><code>shouldDefer</code> 标记工具延迟注册，非立即需要的工具推迟到实际使用时才加载初始化</p>
+        </div>
+        <div class="perf-card">
+          <span class="perf-icon">🚪</span>
+          <div class="perf-name">Feature Gate</div>
+          <div class="perf-en">Dead Code Elimination</div>
+          <p class="perf-desc">编译时死代码消除，通过 Feature Gate 在构建阶段剔除未启用的特性代码，减小包体积</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 8. 设计评析 ==================== -->
+  <section class="content-section fade-section" id="sec-eval">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(247,120,186,0.12);color:var(--accent-pink);">💡</span>
+          设计评析
+        </h2>
+        <p>架构设计的巧妙之处与潜在改进空间</p>
+      </div>
+
+      <div class="eval-grid">
+        <!-- Pros -->
+        <div class="eval-card eval-pros">
+          <div class="eval-title" style="color:var(--accent-green);">
+            <span>✅</span> 巧妙之处
+          </div>
+          <ul class="eval-list">
+            <li>
+              <span class="eval-icon">🚀</span>
+              <span><strong>三阶段启动</strong>：渐进式初始化，快速路径直接退出，避免不必要的初始化开销，实现毫秒级响应</span>
+            </li>
+            <li>
+              <span class="eval-icon">🛡️</span>
+              <span><strong>分层安全</strong>：七层纵深防御架构，每层独立生效，即使某一层被绕过，后续层仍能提供保护</span>
+            </li>
+            <li>
+              <span class="eval-icon">📦</span>
+              <span><strong>压缩流水线</strong>：五层策略协同工作，从精细到粗粒度逐层压缩，在信息保留与 Token 效率间取得平衡</span>
+            </li>
+            <li>
+              <span class="eval-icon">🔒</span>
+              <span><strong>不可变状态</strong>：Zustand-like 不可变更新模式，有效避免多 Agent 场景下的竞态条件和状态不一致问题</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Cons -->
+        <div class="eval-card eval-cons">
+          <div class="eval-title" style="color:var(--accent-orange);">
+            <span>⚠️</span> 潜在问题
+          </div>
+          <ul class="eval-list">
+            <li>
+              <span class="eval-icon">📄</span>
+              <span><strong>main.tsx 4683 行</strong>：单文件代码量过大，包含过多职责，增加了理解、维护和代码审查的困难</span>
+            </li>
+            <li>
+              <span class="eval-icon">🏗️</span>
+              <span><strong>8 层架构复杂度</strong>：深层架构增加了理解和调试的复杂度，新开发者上手成本较高</span>
+            </li>
+            <li>
+              <span class="eval-icon">📉</span>
+              <span><strong>压缩信息丢失</strong>：多层压缩策略可能丢失重要的上下文信息，影响长对话中模型的回答质量</span>
+            </li>
+            <li>
+              <span class="eval-icon">🔧</span>
+              <span><strong>多供应商适配</strong>：API 客户端需要适配多个供应商差异，增加了维护成本和潜在的兼容性风险</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <p><span class="footer-brand">Claude Code v2.1.88</span> 源码架构分析</p>
+      <p>仅供研究学习使用</p>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ==================== JavaScript ==================== -->
+<script>
+(function() {
+  'use strict';
+
+  /* --- Sidebar Toggle (mobile) --- */
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function() {
+      sidebar.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+      if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== toggle) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+
+  /* --- Active TOC Highlight --- */
+  function initTocHighlight() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    var sections = [];
+    tocLinks.forEach(function(link) {
+      var id = link.getAttribute('href').replace('#', '');
+      var el = document.getElementById(id);
+      if (el) sections.push({ id: id, el: el, link: link });
+    });
+
+    function updateActive() {
+      var scrollY = window.scrollY + 120;
+      var current = null;
+      for (var i = sections.length - 1; i >= 0; i--) {
+        if (sections[i].el.offsetTop <= scrollY) {
+          current = sections[i];
+          break;
+        }
+      }
+      tocLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+    }
+
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(function() { updateActive(); ticking = false; });
+        ticking = true;
+      }
+    });
+    updateActive();
+  }
+
+  /* --- Scroll Fade-In Observer --- */
+  function initScrollObserver() {
+    var sections = document.querySelectorAll('.fade-section');
+    if (!('IntersectionObserver' in window)) {
+      sections.forEach(function(s) { s.classList.add('visible'); });
+      return;
+    }
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  /* --- Smooth scroll for sidebar links (close sidebar on mobile) --- */
+  function initSidebarLinks() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    tocLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 1024 && sidebar) {
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+  }
+
+  /* --- Init --- */
+  document.addEventListener('DOMContentLoaded', function() {
+    initScrollObserver();
+    initTocHighlight();
+    initSidebarLinks();
+  });
+})();
+</script>
+</body>
+</html>
