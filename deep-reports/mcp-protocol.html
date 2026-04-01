@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔌 MCP 协议与插件扩展架构 - Claude Code v2.1.88 深度技术审计</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a { color: var(--accent-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+.particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  opacity: 0;
+}
+
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+
+.particle:nth-child(1)  { width: 3px; height: 3px; left:  6%; background: var(--accent-blue);   animation-duration: 18s; animation-delay: 0s;   }
+.particle:nth-child(2)  { width: 2px; height: 2px; left: 15%; background: var(--accent-purple); animation-duration: 22s; animation-delay: 1.5s; }
+.particle:nth-child(3)  { width: 4px; height: 4px; left: 24%; background: var(--accent-green);  animation-duration: 15s; animation-delay: 3s;   }
+.particle:nth-child(4)  { width: 2px; height: 2px; left: 33%; background: var(--accent-cyan);   animation-duration: 25s; animation-delay: 0.8s; }
+.particle:nth-child(5)  { width: 3px; height: 3px; left: 42%; background: var(--accent-pink);   animation-duration: 20s; animation-delay: 5s;   }
+.particle:nth-child(6)  { width: 2px; height: 2px; left: 51%; background: var(--accent-orange); animation-duration: 17s; animation-delay: 2.2s; }
+.particle:nth-child(7)  { width: 4px; height: 4px; left: 60%; background: var(--accent-blue);   animation-duration: 23s; animation-delay: 4s;   }
+.particle:nth-child(8)  { width: 3px; height: 3px; left: 69%; background: var(--accent-purple); animation-duration: 19s; animation-delay: 1s;   }
+.particle:nth-child(9)  { width: 2px; height: 2px; left: 78%; background: var(--accent-green);  animation-duration: 21s; animation-delay: 6s;   }
+.particle:nth-child(10) { width: 3px; height: 3px; left: 85%; background: var(--accent-cyan);   animation-duration: 16s; animation-delay: 3.5s; }
+.particle:nth-child(11) { width: 4px; height: 4px; left: 92%; background: var(--accent-pink);   animation-duration: 24s; animation-delay: 2s;   }
+.particle:nth-child(12) { width: 2px; height: 2px; left: 98%; background: var(--accent-orange); animation-duration: 14s; animation-delay: 7s;   }
+
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.top-nav a { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.top-nav .title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left: auto;
+}
+
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--glow-blue);
+  transition: var(--transition);
+}
+.sidebar-toggle:hover { transform: scale(1.08); }
+
+.layout {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  width: 270px;
+  position: sticky;
+  top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+}
+.sidebar a {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  transition: var(--transition);
+  border-left: 2px solid transparent;
+}
+.sidebar a:hover,
+.sidebar a.active {
+  color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.08);
+  text-decoration: none;
+  border-left-color: var(--accent-blue);
+}
+
+.main { flex: 1; padding: 0 40px 60px; min-width: 0; }
+
+.hero {
+  text-align: center;
+  padding: 48px 0 36px;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, rgba(88,166,255,0.08) 0%, rgba(188,140,255,0.05) 42%, transparent 70%);
+  pointer-events: none;
+  animation: headerGlow 8s ease-in-out infinite;
+}
+@keyframes headerGlow {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 1; transform: translateX(-50%) scale(1.14); }
+}
+.hero-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--accent-blue);
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 6s ease-in-out infinite;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.hero-sub {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 780px;
+  margin: 0 auto 24px;
+  line-height: 1.8;
+}
+.hero-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--gradient-primary);
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 32px 0 40px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-highlight);
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-card:nth-child(1)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
+.stat-card:nth-child(2)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink)); }
+.stat-card:nth-child(3)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+.stat-card:nth-child(4)::before { background: linear-gradient(90deg, var(--accent-orange), var(--accent-yellow)); }
+.stat-card:nth-child(1):hover { box-shadow: 0 4px 24px rgba(88, 166, 255, 0.15); }
+.stat-card:nth-child(2):hover { box-shadow: 0 4px 24px rgba(188, 140, 255, 0.15); }
+.stat-card:nth-child(3):hover { box-shadow: 0 4px 24px rgba(126, 231, 135, 0.15); }
+.stat-card:nth-child(4):hover { box-shadow: 0 4px 24px rgba(240, 136, 62, 0.15); }
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.stat-card:nth-child(1) .stat-value { color: var(--accent-blue); }
+.stat-card:nth-child(2) .stat-value { color: var(--accent-purple); }
+.stat-card:nth-child(3) .stat-value { color: var(--accent-green); }
+.stat-card:nth-child(4) .stat-value { color: var(--accent-orange); }
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.section {
+  margin-bottom: 48px;
+  animation: fadeUp 0.5s ease;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)) 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h2 .icon { font-size: 28px; }
+h3 {
+  font-size: 18px;
+  color: var(--accent-blue);
+  margin: 16px 0 10px;
+}
+.section-intro {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: var(--transition);
+}
+.card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(88, 166, 255, 0.1);
+}
+.card h4 {
+  color: var(--accent-purple);
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.code-block {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.code-block .kw  { color: var(--accent-purple); }
+.code-block .fn  { color: var(--accent-blue); }
+.code-block .str { color: var(--accent-green); }
+.code-block .cm  { color: var(--text-secondary); }
+.code-block .num { color: var(--accent-orange); }
+.code-block .tp  { color: var(--accent-cyan); }
+.code-block .op  { color: var(--accent-red); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 2px;
+}
+.badge-blue   { background: rgba(88, 166, 255, 0.15);  color: var(--accent-blue); }
+.badge-purple { background: rgba(188, 140, 255, 0.15); color: var(--accent-purple); }
+.badge-green  { background: rgba(126, 231, 135, 0.15); color: var(--accent-green); }
+.badge-orange { background: rgba(240, 136, 62, 0.15);  color: var(--accent-orange); }
+.badge-red    { background: rgba(248, 81, 73, 0.15);   color: var(--accent-red); }
+.badge-cyan   { background: rgba(118, 228, 247, 0.15); color: var(--accent-cyan); }
+.badge-pink   { background: rgba(247, 120, 186, 0.15); color: var(--accent-pink); }
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.compare-table th,
+.compare-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  font-size: 14px;
+  vertical-align: top;
+}
+.compare-table th {
+  background: var(--bg-tertiary);
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+.compare-table td { background: var(--bg-secondary); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+
+.callout {
+  border-left: 3px solid var(--accent-cyan);
+  background: rgba(118, 228, 247, 0.06);
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin: 14px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.callout strong { color: var(--accent-cyan); }
+
+.mini-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mini-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.pipeline::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(var(--accent-blue), var(--accent-purple), var(--accent-green));
+}
+.pipe-step {
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+  position: relative;
+}
+.pipe-num {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+.pipe-content { flex: 1; padding-top: 6px; }
+.pipe-content strong { color: var(--accent-blue); }
+
+.footer {
+  text-align: center;
+  padding: 40px 20px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--accent-blue);
+  margin-bottom: 8px;
+}
+.footer-back:hover { text-decoration: underline; }
+.footer-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-top: 12px;
+}
+.footer-meta code {
+  color: var(--accent-cyan);
+  background: rgba(118, 228, 247, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+ul { padding-left: 20px; }
+li { margin-bottom: 6px; font-size: 14px; }
+p { font-size: 14px; color: var(--text-secondary); }
+
+@media (max-width: 900px) {
+  .sidebar-toggle { display: block; }
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    position: fixed;
+    top: 52px;
+    left: -100%;
+    height: calc(100vh - 52px);
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    z-index: 150;
+    transition: left 0.3s;
+  }
+  .sidebar.open { left: 0; }
+  .main { padding: 0 16px 60px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid, .grid-2 { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 26px; }
+}
+@media (max-width: 560px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-value { font-size: 22px; }
+  .top-nav .title { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+
+<div class="particles">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<nav class="top-nav">
+  <a href="index.html">← 返回导航中心</a>
+  <span class="title">🔌 MCP 协议与插件扩展架构</span>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="切换目录">☰</button>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a href="#overview">1. 架构总览</a>
+    <a href="#inventory">2. 23 模块清单</a>
+    <a href="#transport">3. 传输层设计</a>
+    <a href="#connection">4. 连接管理</a>
+    <a href="#auth">5. 认证与 OAuth</a>
+    <a href="#channel">6. 通道控制</a>
+    <a href="#registry">7. 官方注册表与 Claude.ai</a>
+    <a href="#vscode">8. VS Code 桥接</a>
+    <a href="#safety">9. 审批与安全路径</a>
+  </aside>
+
+  <main class="main">
+    <section class="hero">
+      <div class="hero-badge">Claude Code v2.1.88 · services/mcp 深度分析</div>
+      <h1>🔌 MCP 协议与插件扩展架构</h1>
+      <p class="hero-sub">
+        本报告基于 <code style="color:var(--accent-cyan)">restored-src/src/services/mcp</code> 目录的 23 个文件，分析 Claude Code 如何把 MCP 连接、传输、认证、通道治理、官方注册表、Claude.ai 托管接入以及 VS Code 桥接组织成一个可扩展的插件接入层。文中结论只建立在文件事实、模块命名与架构关系之上，不额外臆测未被代码结构支持的底层实现细节。
+      </p>
+      <div class="hero-divider"></div>
+    </section>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">23</div>
+        <div class="stat-label">23个MCP模块</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">2</div>
+        <div class="stat-label">2种传输层</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">OAuth</div>
+        <div class="stat-label">OAuth认证</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">官方</div>
+        <div class="stat-label">官方注册表</div>
+      </div>
+    </div>
+
+    <section class="section" id="overview">
+      <h2><span class="icon">🏗️</span> 架构总览</h2>
+      <p class="section-intro">
+        从目录结构看，<strong>services/mcp</strong> 不是单一客户端文件，而是一层完整的 MCP 接入平面：底部是传输与协议桥接，中间是客户端、配置、类型和连接管理，上层再叠加 OAuth、通道审批、官方源识别、Claude.ai 托管入口与 VS Code 集成。
+      </p>
+
+      <div class="card">
+        <h4>目录级架构分层</h4>
+        <div class="code-block">
+<span class="cm">┌────────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span> <span class="fn">UI / 状态层</span>                                            <span class="cm">│</span><br>
+<span class="cm">│</span>   MCPConnectionManager.tsx  ·  useManageMCPConnections.ts <span class="cm">│</span><br>
+<span class="cm">├────────────────────────────────────────────────────────────┤</span><br>
+<span class="cm">│</span> <span class="fn">客户端编排层</span>                                         <span class="cm">│</span><br>
+<span class="cm">│</span>   client.ts · config.ts · types.ts · utils.ts             <span class="cm">│</span><br>
+<span class="cm">├───────────────────────┬───────────────────────┬────────────┤</span><br>
+<span class="cm">│</span> <span class="fn">传输层</span>              <span class="cm">│</span> <span class="fn">认证层</span>              <span class="cm">│</span> <span class="fn">安全层</span>     <span class="cm">│</span><br>
+<span class="cm">│</span> InProcessTransport   <span class="cm">│</span> auth.ts               <span class="cm">│</span> elicitationHandler.ts <span class="cm">│</span><br>
+<span class="cm">│</span> SdkControlTransport  <span class="cm">│</span> oauthPort.ts          <span class="cm">│</span> normalization.ts      <span class="cm">│</span><br>
+<span class="cm">│</span>                      <span class="cm">│</span> headersHelper.ts      <span class="cm">│</span> mcpStringUtils.ts     <span class="cm">│</span><br>
+<span class="cm">│</span>                      <span class="cm">│</span> xaa.ts / xaaIdpLogin.ts<span class="cm">│</span>                        <span class="cm">│</span><br>
+<span class="cm">├───────────────────────┴───────────────────────┴────────────┤</span><br>
+<span class="cm">│</span> <span class="fn">生态集成层</span>                                            <span class="cm">│</span><br>
+<span class="cm">│</span> officialRegistry.ts · claudeai.ts · vscodeSdkMcp.ts      <span class="cm">│</span><br>
+<span class="cm">│</span> channelNotification.ts · channelAllowlist.ts · channelPermissions.ts <span class="cm">│</span><br>
+<span class="cm">└────────────────────────────────────────────────────────────┘</span>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>关键观察：</strong> 这一层既要面向本地/同进程 MCP，又要面向 SDK 桥接、云端 Claude.ai 托管源和官方注册表，因此文件分工呈现出“协议接入 + 安全治理 + 平台桥接”三条并行轴线。
+      </div>
+    </section>
+
+    <section class="section" id="inventory">
+      <h2><span class="icon">🧩</span> 23 模块清单</h2>
+      <p class="section-intro">
+        目录中共有 23 个文件，正好覆盖基础类型、传输、认证、连接管理、通道控制、注册表与字符串/规范化工具链。下面的表格按职责分组列出所有文件。
+      </p>
+
+      <div class="card">
+        <h4>完整文件清单（23/23）</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>分组</th>
+              <th>文件</th>
+              <th>架构角色</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>基础层</td><td><code>client.ts</code>, <code>config.ts</code>, <code>types.ts</code>, <code>utils.ts</code></td><td>客户端编排、配置过滤、共享类型、通用辅助</td></tr>
+            <tr><td>传输层</td><td><code>InProcessTransport.ts</code>, <code>SdkControlTransport.ts</code></td><td>同进程直连 / SDK 控制桥</td></tr>
+            <tr><td>认证层</td><td><code>auth.ts</code>, <code>oauthPort.ts</code>, <code>headersHelper.ts</code>, <code>xaa.ts</code>, <code>xaaIdpLogin.ts</code></td><td>OAuth、端口管理、动态头、XAA/IdP 登录</td></tr>
+            <tr><td>连接/UI</td><td><code>MCPConnectionManager.tsx</code>, <code>useManageMCPConnections.ts</code></td><td>React Context 与连接生命周期 Hook</td></tr>
+            <tr><td>通道治理</td><td><code>channelNotification.ts</code>, <code>channelAllowlist.ts</code>, <code>channelPermissions.ts</code></td><td>通道消息、批准清单、权限中继</td></tr>
+            <tr><td>平台接入</td><td><code>officialRegistry.ts</code>, <code>claudeai.ts</code>, <code>vscodeSdkMcp.ts</code>, <code>envExpansion.ts</code></td><td>官方源识别、Claude.ai 托管源、VS Code 桥接、环境变量展开</td></tr>
+            <tr><td>安全/规范化</td><td><code>elicitationHandler.ts</code>, <code>normalization.ts</code>, <code>mcpStringUtils.ts</code></td><td>审批表单事件、命名规范化、MCP 名称字符串处理</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>中心文件</h4>
+          <p><code>client.ts</code>、<code>config.ts</code>、<code>types.ts</code>、<code>utils.ts</code> 共同构成了目录的“骨架层”。其中 <code>types.ts</code> 提供跨文件复用的共享类型，<code>config.ts</code> 负责配置判定与过滤，<code>client.ts</code> 则更像连接编排入口。</p>
+        </div>
+        <div class="card">
+          <h4>扩展文件</h4>
+          <p>其余文件多数以专题方式扩展能力：认证是 <code>auth.ts</code> 体系，通道治理由三件套控制，平台集成则由 <code>officialRegistry.ts</code>、<code>claudeai.ts</code> 与 <code>vscodeSdkMcp.ts</code> 分别负责。</p>
+        </div>
+      </div>
+
+      <div class="mini-list">
+        <span class="mini-item">client.ts</span><span class="mini-item">config.ts</span><span class="mini-item">types.ts</span><span class="mini-item">utils.ts</span>
+        <span class="mini-item">InProcessTransport.ts</span><span class="mini-item">SdkControlTransport.ts</span><span class="mini-item">auth.ts</span><span class="mini-item">officialRegistry.ts</span>
+        <span class="mini-item">MCPConnectionManager.tsx</span><span class="mini-item">useManageMCPConnections.ts</span><span class="mini-item">vscodeSdkMcp.ts</span><span class="mini-item">oauthPort.ts</span>
+        <span class="mini-item">elicitationHandler.ts</span><span class="mini-item">normalization.ts</span><span class="mini-item">channelNotification.ts</span><span class="mini-item">channelAllowlist.ts</span>
+        <span class="mini-item">channelPermissions.ts</span><span class="mini-item">headersHelper.ts</span><span class="mini-item">envExpansion.ts</span><span class="mini-item">claudeai.ts</span>
+        <span class="mini-item">mcpStringUtils.ts</span><span class="mini-item">xaa.ts</span><span class="mini-item">xaaIdpLogin.ts</span>
+      </div>
+    </section>
+
+    <section class="section" id="transport">
+      <h2><span class="icon">🚚</span> 传输层设计</h2>
+      <p class="section-intro">
+        目录中明确存在两种传输文件：<code>InProcessTransport.ts</code> 与 <code>SdkControlTransport.ts</code>。这意味着 Claude Code 的 MCP 接入并非只假定一种部署模式，而是至少覆盖“同进程链接”和“通过 SDK 控制桥跨边界通信”两种形态。
+      </p>
+
+      <div class="card">
+        <h4>传输模型对照</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>传输类型</th>
+              <th>主要定位</th>
+              <th>架构含义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>InProcessTransport</code></td>
+              <td>在同一进程内建立一对链接的客户端/服务端传输对象</td>
+              <td>强调本地内聚、低边界成本，适合同进程内的 MCP 服务连接</td>
+            </tr>
+            <tr>
+              <td><code>SdkControlTransport</code></td>
+              <td>把 MCP JSON-RPC 消息包装到 SDK 控制通道中进行路由与回传</td>
+              <td>强调跨进程或跨运行时桥接，说明 CLI 与 SDK 之间存在控制面通信需求</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>架构图：两种传输对应的边界</h4>
+        <div class="code-block">
+<span class="cm">A. 同进程模式</span><br>
+<span class="fn">Claude Code Runtime</span><br>
+&nbsp;&nbsp;├─ <span class="tp">MCP Client</span><br>
+&nbsp;&nbsp;├─ <span class="fn">InProcessTransport</span><br>
+&nbsp;&nbsp;└─ <span class="tp">MCP Server</span><br><br>
+<span class="cm">B. SDK 控制桥模式</span><br>
+<span class="fn">CLI Process</span> ── <span class="str">SdkControlClientTransport</span> ──▶ <span class="fn">SDK Control Channel</span> ──▶ <span class="str">SdkControlServerTransport</span> ──▶ <span class="fn">SDK-side MCP Server</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>为什么要区分两类传输</h4>
+          <p>如果所有 MCP 都仅通过同一种方式连接，就不需要单独拆出两个传输模块。独立文件结构本身说明：Claude Code 将传输边界视为一级设计要素，而不是客户端内部的细小实现差异。</p>
+        </div>
+        <div class="card">
+          <h4>可支持的推论边界</h4>
+          <p>可以合理解读为：<code>InProcessTransport</code> 面向本地、直连、对称消息流；<code>SdkControlTransport</code> 面向桥接、路由和控制面封装。但报告不声称其覆盖全部传输协议实现细节，因为那些需要更细的运行时路径证据。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="connection">
+      <h2><span class="icon">🔗</span> 连接管理</h2>
+      <p class="section-intro">
+        连接管理由 <code>MCPConnectionManager.tsx</code> 与 <code>useManageMCPConnections.ts</code> 组成：前者是 React 上下文提供者，后者是连接、重连、启停和状态同步的业务 Hook。这一分拆说明 UI 暴露面与状态变更逻辑被有意解耦。
+      </p>
+
+      <div class="card">
+        <h4>连接管理职责拆分</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>角色</th>
+              <th>可观察到的架构含义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>MCPConnectionManager.tsx</code></td>
+              <td>Context Provider / UI 入口</td>
+              <td>把重连、启用/禁用等能力以全局上下文形式暴露给界面层</td>
+            </tr>
+            <tr>
+              <td><code>useManageMCPConnections.ts</code></td>
+              <td>连接生命周期 Hook</td>
+              <td>负责配置变更、客户端替换、状态迁移和实际连接编排</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>典型连接控制路径</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>读取动态配置</strong><br><span style="color:var(--text-secondary);font-size:14px">连接逻辑以配置为驱动，而不是硬编码在组件树中。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>Hook 计算状态</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>useManageMCPConnections.ts</code> 处理连接、重连、启停与客户端清理。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>Context 对外暴露</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>MCPConnectionManager.tsx</code> 将 reconnect / toggle 等能力注入 UI。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">4</div>
+            <div class="pipe-content"><strong>工具/命令/资源同步</strong><br><span style="color:var(--text-secondary);font-size:14px">连接结果最终回流到可用 MCP 能力集合。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>结构信号：</strong> 使用一个 TSX Provider 加一个独立 Hook，而不是把全部逻辑写在组件内部，说明连接管理被视为“系统级状态”，而不是某个局部页面的临时逻辑。
+      </div>
+    </section>
+
+    <section class="section" id="auth">
+      <h2><span class="icon">🔐</span> 认证与 OAuth</h2>
+      <p class="section-intro">
+        认证相关的关键文件包括 <code>auth.ts</code>、<code>oauthPort.ts</code>、<code>xaaIdpLogin.ts</code> 与 <code>headersHelper.ts</code>。它们分别对应主认证编排、本地回调端口管理、XAA/IdP 登录路径以及动态请求头生成，形成了一个比“单纯加 Authorization 头”更完整的身份接入层。
+      </p>
+
+      <div class="card">
+        <h4>认证文件职责矩阵</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>主要职责</th>
+              <th>架构解读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>auth.ts</code></td>
+              <td>OAuth 认证主编排</td>
+              <td>说明 MCP 连接可进入独立授权流，而不仅是静态密钥配置</td>
+            </tr>
+            <tr>
+              <td><code>oauthPort.ts</code></td>
+              <td>本地回调端口与 redirect URI 构造</td>
+              <td>表明原生客户端式 OAuth 回调在 CLI/桌面场景中是正式路径</td>
+            </tr>
+            <tr>
+              <td><code>xaaIdpLogin.ts</code></td>
+              <td>XAA / IdP 登录与 token 获取</td>
+              <td>说明系统支持企业身份提供方接入，而非仅面向公开 OAuth 服务器</td>
+            </tr>
+            <tr>
+              <td><code>headersHelper.ts</code></td>
+              <td>辅助脚本生成动态请求头</td>
+              <td>为不适合直接写死在配置中的认证头提供扩展点</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>认证路径示意</h4>
+        <div class="code-block">
+<span class="fn">MCP 服务器连接</span><br>
+&nbsp;&nbsp;├─ <span class="fn">静态配置</span> → headers / URL / transport<br>
+&nbsp;&nbsp;├─ <span class="fn">headersHelper.ts</span> → 动态头补充<br>
+&nbsp;&nbsp;├─ <span class="fn">auth.ts</span> → OAuth 主流程<br>
+&nbsp;&nbsp;│    └─ <span class="fn">oauthPort.ts</span> → localhost 回调端口 / redirect URI<br>
+&nbsp;&nbsp;└─ <span class="fn">xaaIdpLogin.ts</span> / <span class="fn">xaa.ts</span> → 企业 IdP / XAA 扩展身份路径
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>为什么 <code>oauthPort.ts</code> 重要</h4>
+          <p>单独存在的端口模块说明 OAuth 回调并不是“顺带处理”的细节，而是一个需要可配置、可探测端口、可构造回调地址的正式子系统。</p>
+        </div>
+        <div class="card">
+          <h4>为什么 <code>headersHelper.ts</code> 值得单列</h4>
+          <p>这意味着 Claude Code 允许在连接前动态求值请求头。架构上，它把“认证材料的获取”从纯配置读入扩展为可计算过程，但仍通过单独文件维持边界。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="channel">
+      <h2><span class="icon">📣</span> 通道控制</h2>
+      <p class="section-intro">
+        <code>channelNotification.ts</code>、<code>channelAllowlist.ts</code>、<code>channelPermissions.ts</code> 共同构成了一个清晰的通道治理面：一层管消息，一层管允许列表，一层管权限应答与中继。这种三分法很像把“数据面”“策略面”“审批面”分别落到独立模块中。
+      </p>
+
+      <div class="card">
+        <h4>三件套分工</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>面向对象</th>
+              <th>作用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>channelNotification.ts</code></td>
+              <td>通道消息与门控</td>
+              <td>包装/转发通道消息，并在进入系统前做能力与策略门控</td>
+            </tr>
+            <tr>
+              <td><code>channelAllowlist.ts</code></td>
+              <td>允许列表</td>
+              <td>维护已批准的 channel plugin 来源</td>
+            </tr>
+            <tr>
+              <td><code>channelPermissions.ts</code></td>
+              <td>权限响应</td>
+              <td>把权限提示与用户应答跨通道中继回主流程</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>通道控制链路</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>消息进入通道层</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>channelNotification.ts</code> 处理通知包装与通道路由。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>允许列表过滤</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>channelAllowlist.ts</code> 根据批准来源决定哪些插件可参与。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>权限提示中继</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>channelPermissions.ts</code> 把 approval/deny 响应带回工具权限路径。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>架构价值：</strong> 这种拆分避免把“是否允许某通道插件存在”与“具体消息如何封装/发送”混在同一个文件里，也说明 MCP 通道并不是普通日志输出，而是受控的交互入口。
+      </div>
+    </section>
+
+    <section class="section" id="registry">
+      <h2><span class="icon">🗂️</span> 官方注册表与 Claude.ai</h2>
+      <p class="section-intro">
+        <code>officialRegistry.ts</code> 与 <code>claudeai.ts</code> 分别对应两个不同问题：前者回答“某个 MCP URL 是否来自官方注册表”，后者回答“是否可以从 Claude.ai 组织侧拉取托管 MCP 配置”。它们都属于来源治理，但服务的边界不同。
+      </p>
+
+      <div class="grid">
+        <div class="card">
+          <h4><code>officialRegistry.ts</code> 的角色</h4>
+          <p>这个模块负责预取并缓存官方 MCP 注册表 URL 集合，然后对目标 URL 做官方来源判定。它代表的是<strong>来源识别</strong>能力：不是建立连接本身，而是为信任、分析或 UI 标注提供依据。</p>
+          <div class="mini-list">
+            <span class="badge badge-blue">官方 URL 预取</span>
+            <span class="badge badge-cyan">离线集合查找</span>
+            <span class="badge badge-purple">来源判断</span>
+          </div>
+        </div>
+        <div class="card">
+          <h4><code>claudeai.ts</code> 的角色</h4>
+          <p>该模块负责从 Claude.ai 侧获取托管 MCP 服务器配置，并处理命名冲突、连接标记与缓存。它代表的是<strong>托管配置入口</strong>：把组织云端的 MCP 列表映射到本地客户端可连接的配置集合。</p>
+          <div class="mini-list">
+            <span class="badge badge-green">Claude.ai 托管源</span>
+            <span class="badge badge-orange">配置拉取</span>
+            <span class="badge badge-pink">命名去冲突</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>来源治理的双轨模型</h4>
+        <div class="code-block">
+<span class="fn">officialRegistry.ts</span>  →  <span class="str">这个 URL 是否来自官方注册表？</span><br>
+<span class="fn">claudeai.ts</span>        →  <span class="str">这个 Claude.ai 托管配置是否应被拉入本地 MCP 连接面？</span><br><br>
+<span class="cm">前者偏“识别与信任标签”，后者偏“配置发现与托管接入”。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="vscode">
+      <h2><span class="icon">🧠</span> VS Code 桥接</h2>
+      <p class="section-intro">
+        VS Code 相关桥接由 <code>vscodeSdkMcp.ts</code> 与 <code>envExpansion.ts</code> 提供：前者负责 SDK/编辑器方向的 MCP 通知与实验门控同步，后者负责把配置中的环境变量表达式展开为实际值，使编辑器或运行环境相关的动态配置能够安全落地。
+      </p>
+
+      <div class="card">
+        <h4>桥接模块分工</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>功能面</th>
+              <th>意义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>vscodeSdkMcp.ts</code></td>
+              <td>VS Code SDK 通知与实验门控</td>
+              <td>把编辑器端事件纳入 MCP/SDK 控制平面</td>
+            </tr>
+            <tr>
+              <td><code>envExpansion.ts</code></td>
+              <td>环境变量展开</td>
+              <td>让 stdio、URL 或 OAuth 相关配置可以引用运行时环境</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>桥接层示意</h4>
+        <div class="code-block">
+<span class="fn">VS Code Extension / SDK</span><br>
+&nbsp;&nbsp;▲             │<br>
+&nbsp;&nbsp;│ 通知/事件     │ 配置动态值<br>
+&nbsp;&nbsp;│             ▼<br>
+<span class="fn">vscodeSdkMcp.ts</span>   +   <span class="fn">envExpansion.ts</span><br>
+&nbsp;&nbsp;│                         │<br>
+&nbsp;&nbsp;└──────────────▶ <span class="tp">MCP Connection Setup</span>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>可支持的解释：</strong> <code>vscodeSdkMcp.ts</code> 说明 Claude Code 不把 IDE 视为旁路集成，而是把它纳入 MCP/SDK 协同面；<code>envExpansion.ts</code> 则让配置具备运行时适配能力，而不必为每个环境写死连接参数。
+      </div>
+    </section>
+
+    <section class="section" id="safety">
+      <h2><span class="icon">🛡️</span> 审批与安全路径</h2>
+      <p class="section-intro">
+        审批与安全相关的关键链路由 <code>elicitationHandler.ts</code>、<code>normalization.ts</code> 与 <code>mcpStringUtils.ts</code> 组成：一个处理需要用户参与的 elicitation/表单事件，一个保证服务器名符合安全且可组合的命名规范，一个提供工具名解析与构造逻辑，防止权限检查与显示层出现歧义。
+      </p>
+
+      <div class="card">
+        <h4>安全路径中的三个角色</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>关键问题</th>
+              <th>路径中的位置</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>elicitationHandler.ts</code></td>
+              <td>服务器向用户请求输入/确认时由谁接住？</td>
+              <td>审批/表单事件处理入口</td>
+            </tr>
+            <tr>
+              <td><code>normalization.ts</code></td>
+              <td>服务器名称如何保持 API 兼容且避免分隔符冲突？</td>
+              <td>命名规范化、防碰撞基础层</td>
+            </tr>
+            <tr>
+              <td><code>mcpStringUtils.ts</code></td>
+              <td>MCP 工具全名如何构造、拆解并参与权限判断？</td>
+              <td>字符串解析与权限显示辅助层</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>审批/安全数据流</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>服务器名称规范化</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>normalization.ts</code> 先把名称约束到可安全组合的格式。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>工具名生成/解析</strong><br><span style="color:var(--text-secondary);font-size:14px"><code>mcpStringUtils.ts</code> 负责 <code>mcp__server__tool</code> 这类名称的构造与拆解。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>审批事件触发</strong><br><span style="color:var(--text-secondary);font-size:14px">当服务器需要表单/URL/用户回应时，<code>elicitationHandler.ts</code> 注册并消费对应事件。</span></div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">4</div>
+            <div class="pipe-content"><strong>结果回流权限链</strong><br><span style="color:var(--text-secondary);font-size:14px">处理后的命名与事件结果再回到权限检查、显示名称和连接管理路径中。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>为什么这条路径体现“安全而非仅仅工具函数”</h4>
+        <ul>
+          <li><code>elicitationHandler.ts</code> 不是普通 UI 文件，而是把用户批准行为接入 MCP 生命周期的桥。</li>
+          <li><code>normalization.ts</code> 让名称在进入 API 与工具命名体系前先被限制到安全格式，减少分隔符歧义。</li>
+          <li><code>mcpStringUtils.ts</code> 直接影响工具显示名、权限检查名与完整工具标识之间的一致性。</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <strong>总结：</strong> Claude Code 的 MCP 扩展架构并不是“连上服务器就结束”，而是通过命名规范化、字符串构造、审批事件、通道门控、OAuth 和来源识别，把插件扩展变成一个可治理的系统边界。
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a class="footer-back" href="index.html">← 返回深度报告导航</a>
+      <div class="footer-meta">
+        报告范围：<code>restored-src/src/services/mcp</code> · 23 个文件静态分析<br>
+        主题覆盖：传输层、连接管理、OAuth、通道治理、官方注册表、Claude.ai、VS Code 桥接、审批与安全路径
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var sections = document.querySelectorAll('.section');
+  var sidebarLinks = document.querySelectorAll('.sidebar a');
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        sidebarLinks.forEach(function (link) { link.classList.remove('active'); });
+        var active = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(function (section) { observer.observe(section); });
+
+  sidebarLinks.forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      var sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('open');
+    });
+  });
+
+  var toggleBtn = document.getElementById('sidebarToggle');
+  var sidebar = document.getElementById('sidebar');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
