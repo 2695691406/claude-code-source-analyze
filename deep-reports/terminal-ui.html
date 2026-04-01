@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🖥️ 终端 UI 渲染引擎解剖 - Claude Code 深度报告</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-card: #1c2128;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-purple: #bc8cff;
+            --accent-green: #7ee787;
+            --accent-orange: #f0883e;
+            --accent-pink: #f778ba;
+            --accent-cyan: #76e4f7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* Particle Background */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Top Navigation Bar */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(22, 27, 34, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+
+        .top-nav a.back-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .top-nav a.back-link:hover {
+            color: var(--accent-cyan);
+        }
+
+        .top-nav .nav-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .sidebar-toggle {
+            display: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            width: 280px;
+            height: calc(100% - 56px);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            z-index: 900;
+            padding: 20px 0;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+        }
+
+        .sidebar .toc-header {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            padding: 0 20px 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 8px;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 8px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .sidebar a:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .sidebar a.active {
+            color: var(--accent-blue);
+            border-left-color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        .sidebar a .toc-num {
+            color: var(--accent-purple);
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            margin-top: 56px;
+            padding: 0 40px 80px;
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 60px 0 40px;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 17px;
+            color: var(--text-secondary);
+            margin-bottom: 36px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px 16px;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+        }
+
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .stat-card:nth-child(1) .stat-value { color: var(--accent-cyan); }
+        .stat-card:nth-child(2) .stat-value { color: var(--accent-green); }
+        .stat-card:nth-child(3) .stat-value { color: var(--accent-purple); }
+        .stat-card:nth-child(4) .stat-value { color: var(--accent-orange); }
+
+        .stat-card .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Section Styles */
+        .section {
+            margin-top: 56px;
+            scroll-margin-top: 80px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-number {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .section p, .section li {
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .section p {
+            margin-bottom: 16px;
+        }
+
+        .section ul, .section ol {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        .section li {
+            margin-bottom: 6px;
+        }
+
+        /* Info Cards */
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .info-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            margin-bottom: 12px;
+        }
+
+        .info-card.purple h4 { color: var(--accent-purple); }
+        .info-card.green h4 { color: var(--accent-green); }
+        .info-card.orange h4 { color: var(--accent-orange); }
+        .info-card.cyan h4 { color: var(--accent-cyan); }
+        .info-card.pink h4 { color: var(--accent-pink); }
+
+        .highlight-box {
+            background: rgba(88, 166, 255, 0.06);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin-bottom: 20px;
+        }
+
+        .highlight-box.purple {
+            background: rgba(188, 140, 255, 0.06);
+            border-color: rgba(188, 140, 255, 0.2);
+        }
+
+        .highlight-box.green {
+            background: rgba(126, 231, 135, 0.06);
+            border-color: rgba(126, 231, 135, 0.2);
+        }
+
+        .highlight-box.orange {
+            background: rgba(240, 136, 62, 0.06);
+            border-color: rgba(240, 136, 62, 0.2);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px 20px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        pre code {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            color: var(--text-primary);
+        }
+
+        code {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-cyan);
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .code-comment { color: var(--text-secondary); }
+        .code-keyword { color: var(--accent-pink); }
+        .code-string { color: var(--accent-green); }
+        .code-func { color: var(--accent-purple); }
+        .code-type { color: var(--accent-cyan); }
+        .code-const { color: var(--accent-orange); }
+
+        /* Component Grid */
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .component-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+
+        .component-item:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .component-item .comp-name {
+            font-weight: 600;
+            color: var(--accent-cyan);
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 13px;
+        }
+
+        .component-item .comp-desc {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* Pipeline Diagram */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+        }
+
+        .pipeline-step {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            white-space: nowrap;
+        }
+
+        .pipeline-arrow {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        td code {
+            font-size: 12px;
+        }
+
+        /* Tag Badges */
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tag-blue { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+        .tag-green { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+        .tag-purple { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+        .tag-orange { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+        .tag-cyan { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+        .tag-pink { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+
+        /* Hook Categories */
+        .hook-category {
+            margin-bottom: 16px;
+        }
+
+        .hook-category h5 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent-purple);
+        }
+
+        .hook-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .hook-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            color: var(--accent-green);
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 80px;
+            padding: 32px 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+
+        .footer-links a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-cyan);
+        }
+
+        .footer-note {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar-toggle {
+                display: block;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 0 20px 60px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hero-title {
+                font-size: 30px;
+            }
+
+            .component-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pipeline {
+                flex-direction: column;
+            }
+
+            .pipeline-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <a href="index.html" class="back-link">← 返回深度报告索引</a>
+        <span class="nav-title">终端 UI 渲染引擎解剖</span>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="切换侧边栏">☰</button>
+    </nav>
+
+    <!-- Sidebar TOC -->
+    <aside class="sidebar" id="sidebar">
+        <div class="toc-header">目录导航</div>
+        <a href="#section-1" data-section="section-1"><span class="toc-num">01</span>Ink 自定义渲染器</a>
+        <a href="#section-2" data-section="section-2"><span class="toc-num">02</span>Yoga Flexbox 布局引擎</a>
+        <a href="#section-3" data-section="section-3"><span class="toc-num">03</span>渲染管道</a>
+        <a href="#section-4" data-section="section-4"><span class="toc-num">04</span>组件生态系统</a>
+        <a href="#section-5" data-section="section-5"><span class="toc-num">05</span>18个Ink核心组件</a>
+        <a href="#section-6" data-section="section-6"><span class="toc-num">06</span>83个自定义 Hook</a>
+        <a href="#section-7" data-section="section-7"><span class="toc-num">07</span>键盘与输入系统</a>
+        <a href="#section-8" data-section="section-8"><span class="toc-num">08</span>屏幕与布局</a>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1 class="hero-title">🖥️ 终端 UI 渲染引擎解剖</h1>
+            <p class="hero-subtitle">深入解析 Claude Code v2.1.88 如何在终端中构建完整的 React 驱动的 UI 框架</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">96</div>
+                    <div class="stat-label">Ink 模块</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">145+</div>
+                    <div class="stat-label">组件</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">83</div>
+                    <div class="stat-label">自定义 Hook</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">Yoga</div>
+                    <div class="stat-label">Flexbox 布局</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 1: Ink 自定义渲染器 -->
+        <section class="section" id="section-1">
+            <div class="section-header">
+                <div class="section-number">1</div>
+                <h2 class="section-title">Ink 自定义渲染器</h2>
+            </div>
+
+            <p>Claude Code 的终端 UI 并非简单的字符串拼接——它构建在 <strong>Ink</strong> 框架之上，这是一个完整的 React 渲染器，通过 <code>react-reconciler</code> 将 React 的声明式编程模型引入终端环境。整个渲染器由 96 个模块组成，实现了从虚拟 DOM 到终端字符的完整转换管道。</p>
+
+            <div class="info-card">
+                <h4>📦 核心架构：自定义 React Reconciler</h4>
+                <p>Ink 的核心在于通过 <code>createReconciler()</code> 创建自定义 React reconciler，与浏览器中的 ReactDOM 或移动端的 React Native 类似，但目标平台是终端（TTY）。这意味着 Claude Code 拥有完整的 React 生态能力——状态管理、生命周期、hooks、上下文等。</p>
+            </div>
+
+<pre><code><span class="code-comment">// ink/reconciler.ts - 创建自定义 reconciler</span>
+<span class="code-keyword">import</span> createReconciler <span class="code-keyword">from</span> <span class="code-string">'react-reconciler'</span>;
+
+<span class="code-keyword">const</span> reconciler = <span class="code-func">createReconciler</span>({
+  <span class="code-comment">// 创建终端 DOM 元素实例</span>
+  <span class="code-func">createInstance</span>(type, props) {
+    <span class="code-keyword">const</span> node = <span class="code-keyword">new</span> <span class="code-type">DOMElement</span>(type);
+    node.<span class="code-func">applyProps</span>(props);
+    <span class="code-keyword">return</span> node;
+  },
+
+  <span class="code-comment">// 创建文本节点实例</span>
+  <span class="code-func">createTextInstance</span>(text) {
+    <span class="code-keyword">return</span> <span class="code-keyword">new</span> <span class="code-type">TextNode</span>(text);
+  },
+
+  <span class="code-comment">// 提交更新到终端 DOM</span>
+  <span class="code-func">commitUpdate</span>(instance, updatePayload, type, oldProps, newProps) {
+    instance.<span class="code-func">applyProps</span>(newProps);
+  },
+
+  <span class="code-comment">// 追加子节点</span>
+  <span class="code-func">appendChild</span>(parent, child) {
+    parent.<span class="code-func">appendChild</span>(child);
+  },
+
+  <span class="code-comment">// 支持 mutation 模式</span>
+  <span class="code-const">supportsMutation</span>: <span class="code-const">true</span>,
+  <span class="code-const">supportsPersistence</span>: <span class="code-const">false</span>,
+});</code></pre>
+
+            <div class="highlight-box purple">
+                <p><strong>🔍 Fiber 架构</strong>：Ink 使用 React Fiber 架构来管理组件树。每个终端元素对应一个 Fiber 节点，包含 <code>DOMElement</code>（布局容器）和 <code>TextNode</code>（文本内容）两种基本类型。Fiber 架构的并发模式使得即使在复杂的终端 UI 中也能保持响应性。</p>
+            </div>
+
+            <div class="info-card cyan">
+                <h4>🌳 DOMElement 与 TextNode 层级结构</h4>
+                <p>终端 DOM 树由两种核心节点类型构成：</p>
+                <ul>
+                    <li><code>DOMElement</code> — 对应 Ink 的 <code>&lt;Box&gt;</code> 等容器组件，持有 Yoga 布局节点引用，管理子节点列表和样式属性</li>
+                    <li><code>TextNode</code> — 纯文本内容节点，作为叶子节点存在，存储要渲染的字符串内容</li>
+                </ul>
+                <p>两者共同构成一棵类似浏览器 DOM 的树结构，但所有操作都指向终端输出。</p>
+            </div>
+
+<pre><code><span class="code-comment">// ink/dom.ts - 终端 DOM 元素</span>
+<span class="code-keyword">class</span> <span class="code-type">DOMElement</span> {
+  nodeName: <span class="code-type">string</span>;
+  attributes: <span class="code-type">Map</span>&lt;<span class="code-type">string</span>, <span class="code-type">any</span>&gt;;
+  childNodes: <span class="code-type">Array</span>&lt;<span class="code-type">DOMElement</span> | <span class="code-type">TextNode</span>&gt;;
+  parentNode: <span class="code-type">DOMElement</span> | <span class="code-const">null</span>;
+  yogaNode: <span class="code-type">YogaNode</span> | <span class="code-const">null</span>;
+  style: <span class="code-type">Styles</span>;
+
+  <span class="code-func">appendChild</span>(child: <span class="code-type">DOMElement</span> | <span class="code-type">TextNode</span>) {
+    child.parentNode = <span class="code-keyword">this</span>;
+    <span class="code-keyword">this</span>.childNodes.<span class="code-func">push</span>(child);
+    <span class="code-keyword">if</span> (child <span class="code-keyword">instanceof</span> <span class="code-type">DOMElement</span> &amp;&amp; child.yogaNode) {
+      <span class="code-keyword">this</span>.yogaNode?.<span class="code-func">insertChild</span>(child.yogaNode, <span class="code-keyword">this</span>.yogaNode.<span class="code-func">getChildCount</span>());
+    }
+  }
+
+  <span class="code-func">removeChild</span>(child: <span class="code-type">DOMElement</span> | <span class="code-type">TextNode</span>) {
+    <span class="code-keyword">const</span> index = <span class="code-keyword">this</span>.childNodes.<span class="code-func">indexOf</span>(child);
+    <span class="code-keyword">if</span> (index &gt;= <span class="code-const">0</span>) {
+      <span class="code-keyword">this</span>.childNodes.<span class="code-func">splice</span>(index, <span class="code-const">1</span>);
+      child.parentNode = <span class="code-const">null</span>;
+    }
+  }
+}</code></pre>
+
+            <p>Reconciler 的核心工作流程为：React 组件状态变化 → Fiber 树 diff → 生成更新操作 → 通过 <code>commitUpdate()</code> 应用到终端 DOM → 触发重新布局和渲染。这一过程与浏览器中的 React 完全一致，只是最终输出目标从屏幕像素变为终端字符序列。</p>
+        </section>
+
+        <!-- Section 2: Yoga Flexbox 布局引擎 -->
+        <section class="section" id="section-2">
+            <div class="section-header">
+                <div class="section-number">2</div>
+                <h2 class="section-title">Yoga Flexbox 布局引擎</h2>
+            </div>
+
+            <p>在浏览器中，CSS 引擎负责将 DOM 树转换为视觉布局。在终端环境中，Claude Code 使用 Facebook 开源的 <strong>Yoga</strong> 布局引擎来实现相同功能。Yoga 是一个跨平台的 Flexbox 实现，通过原生（native）绑定提供高性能的布局计算。</p>
+
+            <div class="info-card green">
+                <h4>⚡ Yoga 原生绑定</h4>
+                <p>通过 <code>yoga-layout</code> 的原生 C++ 绑定，布局计算在 Node.js 的原生层执行，避免了 JavaScript 引擎的解释开销。这意味着即使在大量文本输出和复杂嵌套布局的场景下，布局计算仍然可以在毫秒级完成。</p>
+            </div>
+
+<pre><code><span class="code-comment">// ink/yoga-utils.ts - Yoga 节点操作</span>
+<span class="code-keyword">import</span> Yoga <span class="code-keyword">from</span> <span class="code-string">'yoga-layout'</span>;
+
+<span class="code-comment">// 创建 Yoga 布局节点</span>
+<span class="code-keyword">function</span> <span class="code-func">createNode</span>(): <span class="code-type">YogaNode</span> {
+  <span class="code-keyword">return</span> Yoga.Node.<span class="code-func">create</span>();
+}
+
+<span class="code-comment">// 将子节点添加到父布局节点</span>
+<span class="code-keyword">function</span> <span class="code-func">appendChildNode</span>(parent: <span class="code-type">YogaNode</span>, child: <span class="code-type">YogaNode</span>): <span class="code-type">void</span> {
+  parent.<span class="code-func">insertChild</span>(child, parent.<span class="code-func">getChildCount</span>());
+}
+
+<span class="code-comment">// 从父节点移除子节点</span>
+<span class="code-keyword">function</span> <span class="code-func">removeChildNode</span>(parent: <span class="code-type">YogaNode</span>, child: <span class="code-type">YogaNode</span>): <span class="code-type">void</span> {
+  parent.<span class="code-func">removeChild</span>(child);
+}
+
+<span class="code-comment">// 标记节点为脏（需要重新布局）</span>
+<span class="code-keyword">function</span> <span class="code-func">markDirty</span>(node: <span class="code-type">YogaNode</span>): <span class="code-type">void</span> {
+  node.<span class="code-func">markDirty</span>();
+}</code></pre>
+
+            <div class="highlight-box green">
+                <p><strong>📐 Flexbox 布局属性映射</strong>：Ink 将 CSS Flexbox 的常见属性映射到 Yoga 布局引擎：<code>flexDirection</code>、<code>justifyContent</code>、<code>alignItems</code>、<code>flexGrow</code>、<code>flexShrink</code>、<code>padding</code>、<code>margin</code>、<code>width</code>、<code>height</code> 等。开发者可以像编写 CSS Flexbox 一样编写终端布局。</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>API 函数</th>
+                        <th>功能描述</th>
+                        <th>调用时机</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>createNode()</code></td>
+                        <td>创建新的 Yoga 布局节点</td>
+                        <td>组件挂载时</td>
+                    </tr>
+                    <tr>
+                        <td><code>appendChildNode()</code></td>
+                        <td>将子布局节点附加到父节点</td>
+                        <td>DOM 树构建时</td>
+                    </tr>
+                    <tr>
+                        <td><code>removeChildNode()</code></td>
+                        <td>从父节点移除子布局节点</td>
+                        <td>组件卸载时</td>
+                    </tr>
+                    <tr>
+                        <td><code>markDirty()</code></td>
+                        <td>标记节点需要重新计算布局</td>
+                        <td>内容变化时</td>
+                    </tr>
+                    <tr>
+                        <td><code>calculateLayout()</code></td>
+                        <td>执行布局计算（根节点调用）</td>
+                        <td>渲染前</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-card orange">
+                <h4>📊 性能监控 API</h4>
+                <p>Ink 内置了 Yoga 布局性能监控机制，帮助开发者优化渲染性能：</p>
+                <ul>
+                    <li><code>recordYogaMs()</code> — 记录每次 Yoga 布局计算耗时</li>
+                    <li><code>getLastYogaMs()</code> — 获取最近一次布局计算耗时</li>
+                    <li><code>getYogaCounters()</code> — 获取布局计算的累计统计数据（调用次数、总耗时等）</li>
+                </ul>
+                <p>这些 API 让 Claude Code 能够实时监控渲染性能，确保在大量输出时终端 UI 保持流畅。</p>
+            </div>
+
+<pre><code><span class="code-comment">// 性能监控实现</span>
+<span class="code-keyword">let</span> yogaCounters = { calls: <span class="code-const">0</span>, totalMs: <span class="code-const">0</span> };
+<span class="code-keyword">let</span> lastYogaMs = <span class="code-const">0</span>;
+
+<span class="code-keyword">function</span> <span class="code-func">recordYogaMs</span>(ms: <span class="code-type">number</span>): <span class="code-type">void</span> {
+  lastYogaMs = ms;
+  yogaCounters.calls++;
+  yogaCounters.totalMs += ms;
+}
+
+<span class="code-keyword">function</span> <span class="code-func">getLastYogaMs</span>(): <span class="code-type">number</span> {
+  <span class="code-keyword">return</span> lastYogaMs;
+}
+
+<span class="code-keyword">function</span> <span class="code-func">getYogaCounters</span>(): <span class="code-type">YogaCounters</span> {
+  <span class="code-keyword">return</span> { ...yogaCounters };
+}</code></pre>
+        </section>
+
+        <!-- Section 3: 渲染管道 -->
+        <section class="section" id="section-3">
+            <div class="section-header">
+                <div class="section-number">3</div>
+                <h2 class="section-title">渲染管道</h2>
+            </div>
+
+            <p>渲染管道是将 React 组件树转化为终端可见输出的完整流程。Claude Code 的渲染管道由多个阶段组成，每个阶段执行特定的转换任务，最终将 JSX 描述的 UI 转化为终端上的彩色字符输出。</p>
+
+            <div class="pipeline">
+                <div class="pipeline-step">React 状态变化</div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">Fiber 树更新</div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">Yoga 布局计算</div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">输出 Diff</div>
+                <span class="pipeline-arrow">→</span>
+                <div class="pipeline-step">终端写入</div>
+            </div>
+
+            <div class="info-card">
+                <h4>🔄 完整渲染周期详解</h4>
+                <ol>
+                    <li><strong>状态变化触发</strong> — 用户输入、API 响应或定时器回调引起 React 状态更新</li>
+                    <li><strong>Fiber 树 Diff</strong> — React reconciler 对比新旧 Fiber 树，计算最小更新集</li>
+                    <li><strong>DOM 更新</strong> — 通过 <code>commitUpdate()</code> 将变化应用到终端 DOM 树</li>
+                    <li><strong>布局计算</strong> — Yoga 引擎根据终端宽度约束重新计算所有节点位置和尺寸</li>
+                    <li><strong>输出生成</strong> — 遍历布局后的 DOM 树，生成带有 ANSI 转义序列的终端输出字符串</li>
+                    <li><strong>Diff 优化</strong> — 对比上一帧输出，仅将变化的行写入终端</li>
+                    <li><strong>终端写入</strong> — 使用光标控制序列将更新内容写入 stdout</li>
+                </ol>
+            </div>
+
+<pre><code><span class="code-comment">// ink/renderer.ts - 渲染管道核心逻辑</span>
+<span class="code-keyword">function</span> <span class="code-func">render</span>(rootNode: <span class="code-type">DOMElement</span>, terminalWidth: <span class="code-type">number</span>): <span class="code-type">string</span> {
+  <span class="code-comment">// 阶段 1: 计算 Yoga 布局</span>
+  <span class="code-keyword">const</span> startTime = performance.<span class="code-func">now</span>();
+  rootNode.yogaNode.<span class="code-func">calculateLayout</span>(terminalWidth, <span class="code-const">undefined</span>, Yoga.<span class="code-const">DIRECTION_LTR</span>);
+  <span class="code-func">recordYogaMs</span>(performance.<span class="code-func">now</span>() - startTime);
+
+  <span class="code-comment">// 阶段 2: 将布局结果转为输出字符串</span>
+  <span class="code-keyword">const</span> output = <span class="code-func">renderNodeToOutput</span>(rootNode, {
+    offsetX: <span class="code-const">0</span>,
+    offsetY: <span class="code-const">0</span>,
+    clipRegion: { x: <span class="code-const">0</span>, y: <span class="code-const">0</span>, width: terminalWidth, height: <span class="code-const">Infinity</span> },
+  });
+
+  <span class="code-comment">// 阶段 3: 生成终端输出（含 ANSI 转义码）</span>
+  <span class="code-keyword">return</span> <span class="code-func">generateTerminalOutput</span>(output);
+}</code></pre>
+
+            <div class="highlight-box orange">
+                <p><strong>🎯 Diff 算法优化</strong>：渲染器不会每帧都重写整个终端屏幕。它维护一个上一帧的输出缓冲区，通过逐行对比找出差异行，只向终端写入变化的部分。这大幅减少了 I/O 操作，特别是在大量文本输出（如代码生成）场景下，能显著降低闪烁和延迟。</p>
+            </div>
+
+            <div class="info-card cyan">
+                <h4>📺 ANSI 转义序列处理</h4>
+                <p>终端不同于浏览器——它没有 CSS、没有像素，只有字符和 ANSI 控制码。Ink 的输出阶段负责将样式属性转换为 ANSI 转义序列：</p>
+                <ul>
+                    <li><strong>颜色映射</strong> — 将 <code>color</code> 和 <code>backgroundColor</code> 映射为 ANSI 256色/TrueColor 转义码</li>
+                    <li><strong>文本装饰</strong> — <code>bold</code>、<code>italic</code>、<code>underline</code>、<code>strikethrough</code> 映射为对应 ANSI 码</li>
+                    <li><strong>光标控制</strong> — 使用 <code>\x1b[H</code>（移动光标）、<code>\x1b[J</code>（清屏）等序列</li>
+                    <li><strong>滚动管理</strong> — 基于滚动区域的内容裁剪和光标定位</li>
+                </ul>
+            </div>
+
+<pre><code><span class="code-comment">// ink/output.ts - 输出 diff 与终端写入</span>
+<span class="code-keyword">class</span> <span class="code-type">Output</span> {
+  <span class="code-keyword">private</span> previousOutput: <span class="code-type">string</span> = <span class="code-string">''</span>;
+
+  <span class="code-func">write</span>(nextOutput: <span class="code-type">string</span>): <span class="code-type">void</span> {
+    <span class="code-keyword">const</span> prevLines = <span class="code-keyword">this</span>.previousOutput.<span class="code-func">split</span>(<span class="code-string">'\n'</span>);
+    <span class="code-keyword">const</span> nextLines = nextOutput.<span class="code-func">split</span>(<span class="code-string">'\n'</span>);
+
+    <span class="code-comment">// 逐行对比，仅输出差异行</span>
+    <span class="code-keyword">for</span> (<span class="code-keyword">let</span> i = <span class="code-const">0</span>; i &lt; nextLines.length; i++) {
+      <span class="code-keyword">if</span> (prevLines[i] !== nextLines[i]) {
+        <span class="code-func">moveCursor</span>(<span class="code-const">0</span>, i);
+        <span class="code-func">clearLine</span>();
+        process.stdout.<span class="code-func">write</span>(nextLines[i]);
+      }
+    }
+
+    <span class="code-keyword">this</span>.previousOutput = nextOutput;
+  }
+}</code></pre>
+        </section>
+
+        <!-- Section 4: 组件生态系统 -->
+        <section class="section" id="section-4">
+            <div class="section-header">
+                <div class="section-number">4</div>
+                <h2 class="section-title">组件生态系统</h2>
+            </div>
+
+            <p>Claude Code 拥有一个庞大的组件生态系统，超过 <strong>145 个组件</strong> 覆盖了终端 AI 助手的所有交互场景。这些组件按功能分为多个类别，从基础的消息展示到复杂的工具执行可视化，构成了完整的用户界面。</p>
+
+            <div class="info-card">
+                <h4>💬 消息展示组件 (Messages)</h4>
+                <p>负责对话流的渲染，是用户与 AI 交互的核心视觉层：</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-item">
+                    <div class="comp-name">MessageList</div>
+                    <div class="comp-desc">对话消息列表容器，管理滚动和虚拟化</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">AssistantMessage</div>
+                    <div class="comp-desc">AI 回复消息气泡渲染</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">UserMessage</div>
+                    <div class="comp-desc">用户消息展示</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">SystemMessage</div>
+                    <div class="comp-desc">系统提示信息</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">MessageStream</div>
+                    <div class="comp-desc">流式输出的实时渲染</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">MarkdownRenderer</div>
+                    <div class="comp-desc">终端 Markdown 渲染器</div>
+                </div>
+            </div>
+
+            <div class="info-card green">
+                <h4>⌨️ 用户输入组件 (PromptInput)</h4>
+                <p>处理用户的文本输入、自动补全和命令解析：</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-item">
+                    <div class="comp-name">PromptInput</div>
+                    <div class="comp-desc">主输入框组件，支持多行编辑</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">AutoComplete</div>
+                    <div class="comp-desc">文件路径和命令自动补全</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">SlashCommandMenu</div>
+                    <div class="comp-desc">斜杠命令选择菜单</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">InputHistory</div>
+                    <div class="comp-desc">输入历史记录导航</div>
+                </div>
+            </div>
+
+            <div class="info-card purple">
+                <h4>🔧 工具展示组件 (Tool Displays)</h4>
+                <p>每种 AI 工具都有对应的可视化组件，展示执行过程和结果：</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-item">
+                    <div class="comp-name">BashTool</div>
+                    <div class="comp-desc">Shell 命令执行与输出展示</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">FileEditTool</div>
+                    <div class="comp-desc">文件编辑 diff 预览</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">FileReadTool</div>
+                    <div class="comp-desc">文件读取内容展示</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">FileWriteTool</div>
+                    <div class="comp-desc">文件写入预览与确认</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">GrepTool</div>
+                    <div class="comp-desc">搜索结果高亮展示</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">GlobTool</div>
+                    <div class="comp-desc">文件模式匹配结果</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">LSPTool</div>
+                    <div class="comp-desc">语言服务器协议工具</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">McpTool</div>
+                    <div class="comp-desc">MCP 工具调用展示</div>
+                </div>
+            </div>
+
+            <div class="info-card orange">
+                <h4>🪟 叠加层组件 (Overlays)</h4>
+                <p>浮动在主界面上方的交互层，处理模态对话框和弹出菜单：</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-item">
+                    <div class="comp-name">PermissionModal</div>
+                    <div class="comp-desc">工具执行权限确认弹窗</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">AutoCompleteOverlay</div>
+                    <div class="comp-desc">自动补全浮动面板</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">SettingsOverlay</div>
+                    <div class="comp-desc">设置页面叠加层</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">HelpOverlay</div>
+                    <div class="comp-desc">帮助信息面板</div>
+                </div>
+            </div>
+
+            <div class="info-card pink">
+                <h4>📊 状态展示组件 (Status)</h4>
+                <p>展示系统运行状态、成本和进度信息：</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-item">
+                    <div class="comp-name">CostDisplay</div>
+                    <div class="comp-desc">API 调用成本实时追踪</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">ProgressIndicator</div>
+                    <div class="comp-desc">操作进度条和加载动画</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">TokenCounter</div>
+                    <div class="comp-desc">Token 用量统计</div>
+                </div>
+                <div class="component-item">
+                    <div class="comp-name">StatusBar</div>
+                    <div class="comp-desc">底部状态栏信息</div>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>🏖️ Sandbox 设置组件</strong>：Claude Code 包含 5 个独立的沙箱配置组件文件，管理不同执行环境的安全策略和权限设置。这些组件允许用户在终端内直接配置 Docker、macOS Sandbox 和文件系统隔离等安全参数。</p>
+            </div>
+        </section>
+
+        <!-- Section 5: 18个Ink核心组件 -->
+        <section class="section" id="section-5">
+            <div class="section-header">
+                <div class="section-number">5</div>
+                <h2 class="section-title">18个 Ink 核心组件</h2>
+            </div>
+
+            <p>在 145+ 业务组件之下，是 Ink 框架的 18 个核心底层组件。这些组件位于 <code>ink/components/</code> 目录中，提供终端渲染的基础构建块，类似于 HTML 中的 <code>&lt;div&gt;</code>、<code>&lt;span&gt;</code> 等原生元素。</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>组件名</th>
+                        <th>类型</th>
+                        <th>功能描述</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>Box</code></td>
+                        <td><span class="tag tag-blue">容器</span></td>
+                        <td>核心 Flexbox 容器，对应 Yoga 布局节点，支持所有 Flexbox 属性</td>
+                    </tr>
+                    <tr>
+                        <td><code>Text</code></td>
+                        <td><span class="tag tag-green">文本</span></td>
+                        <td>文本渲染组件，支持颜色、粗体、下划线等 ANSI 样式</td>
+                    </tr>
+                    <tr>
+                        <td><code>ScrollBox</code></td>
+                        <td><span class="tag tag-purple">滚动</span></td>
+                        <td>可滚动容器，管理内容溢出和滚动状态</td>
+                    </tr>
+                    <tr>
+                        <td><code>Static</code></td>
+                        <td><span class="tag tag-orange">静态</span></td>
+                        <td>静态内容区域，一次渲染后不再更新，优化性能</td>
+                    </tr>
+                    <tr>
+                        <td><code>Transform</code></td>
+                        <td><span class="tag tag-cyan">变换</span></td>
+                        <td>内容变换器，对子内容应用自定义字符串变换</td>
+                    </tr>
+                    <tr>
+                        <td><code>Spacer</code></td>
+                        <td><span class="tag tag-blue">布局</span></td>
+                        <td>弹性间距组件，填充可用空间</td>
+                    </tr>
+                    <tr>
+                        <td><code>Newline</code></td>
+                        <td><span class="tag tag-green">文本</span></td>
+                        <td>换行符组件，插入一个或多个换行</td>
+                    </tr>
+                    <tr>
+                        <td><code>StdinContext</code></td>
+                        <td><span class="tag tag-purple">上下文</span></td>
+                        <td>标准输入流上下文提供器</td>
+                    </tr>
+                    <tr>
+                        <td><code>StdoutContext</code></td>
+                        <td><span class="tag tag-purple">上下文</span></td>
+                        <td>标准输出流上下文提供器</td>
+                    </tr>
+                    <tr>
+                        <td><code>StderrContext</code></td>
+                        <td><span class="tag tag-purple">上下文</span></td>
+                        <td>标准错误流上下文提供器</td>
+                    </tr>
+                    <tr>
+                        <td><code>FocusContext</code></td>
+                        <td><span class="tag tag-orange">焦点</span></td>
+                        <td>焦点管理上下文，追踪当前活动元素</td>
+                    </tr>
+                    <tr>
+                        <td><code>ErrorBoundary</code></td>
+                        <td><span class="tag tag-pink">错误</span></td>
+                        <td>错误边界组件，捕获子组件渲染错误</td>
+                    </tr>
+                </tbody>
+            </table>
+
+<pre><code><span class="code-comment">// ink/components/Box.tsx - 核心容器组件</span>
+<span class="code-keyword">const</span> <span class="code-type">Box</span>: <span class="code-type">FC</span>&lt;<span class="code-type">BoxProps</span>&gt; = ({ children, ...style }) =&gt; {
+  <span class="code-comment">// Box 直接映射到 Yoga 布局节点</span>
+  <span class="code-comment">// 每个 style 属性都会转换为 Yoga 布局约束</span>
+  <span class="code-keyword">return</span> (
+    &lt;<span class="code-type">ink-box</span>
+      flexDirection={style.<span class="code-const">flexDirection</span> ?? <span class="code-string">'column'</span>}
+      justifyContent={style.<span class="code-const">justifyContent</span>}
+      alignItems={style.<span class="code-const">alignItems</span>}
+      padding={style.<span class="code-const">padding</span>}
+      margin={style.<span class="code-const">margin</span>}
+      width={style.<span class="code-const">width</span>}
+      height={style.<span class="code-const">height</span>}
+      borderStyle={style.<span class="code-const">borderStyle</span>}
+    &gt;
+      {children}
+    &lt;/<span class="code-type">ink-box</span>&gt;
+  );
+};
+
+<span class="code-comment">// ink/components/Text.tsx - 文本渲染组件</span>
+<span class="code-keyword">const</span> <span class="code-type">Text</span>: <span class="code-type">FC</span>&lt;<span class="code-type">TextProps</span>&gt; = ({ children, color, bold, italic, underline }) =&gt; {
+  <span class="code-comment">// Text 将样式属性映射为 ANSI 转义序列</span>
+  <span class="code-keyword">return</span> (
+    &lt;<span class="code-type">ink-text</span>
+      style={{ color, bold, italic, underline }}
+    &gt;
+      {children}
+    &lt;/<span class="code-type">ink-text</span>&gt;
+  );
+};</code></pre>
+
+            <div class="highlight-box purple">
+                <p><strong>🔎 Static 组件优化</strong>：<code>&lt;Static&gt;</code> 组件是 Ink 的性能优化核心之一。它将已经完成渲染的内容标记为"静态"，后续渲染周期中跳过对这部分内容的 diff 计算。在 Claude Code 中，已完成的消息对话通过 Static 组件渲染，只有最新的活动消息参与每帧的重新渲染。</p>
+            </div>
+
+            <div class="info-card">
+                <h4>🔗 ScrollBox 滚动容器</h4>
+                <p><code>ScrollBox</code> 是终端滚动的核心实现。它通过以下机制实现流畅滚动：</p>
+                <ul>
+                    <li>维护 <code>scrollTop</code> 状态，追踪当前滚动位置</li>
+                    <li>基于 Yoga 计算的内容高度和可视区域高度，确定可滚动范围</li>
+                    <li>使用 <code>Transform</code> 组件对内容进行纵向偏移裁剪</li>
+                    <li>支持键盘（上/下箭头、Page Up/Down）和鼠标滚轮滚动</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 6: 83个自定义 Hook -->
+        <section class="section" id="section-6">
+            <div class="section-header">
+                <div class="section-number">6</div>
+                <h2 class="section-title">83个自定义 Hook</h2>
+            </div>
+
+            <p>Claude Code 定义了 <strong>83 个自定义 React Hook</strong>，覆盖状态管理、副作用处理、数据查询、上下文访问和工具交互等所有方面。这些 Hook 构成了业务逻辑与 UI 组件之间的桥梁层。</p>
+
+            <div class="hook-category">
+                <h5>📦 状态管理 Hook</h5>
+                <div class="hook-list">
+                    <span class="hook-item">useTerminalSize</span>
+                    <span class="hook-item">useScrollPosition</span>
+                    <span class="hook-item">useInputState</span>
+                    <span class="hook-item">useConversationState</span>
+                    <span class="hook-item">useToolState</span>
+                    <span class="hook-item">usePermissionState</span>
+                    <span class="hook-item">useTheme</span>
+                    <span class="hook-item">useSettings</span>
+                    <span class="hook-item">useFocusState</span>
+                    <span class="hook-item">useSelectionState</span>
+                </div>
+            </div>
+
+            <div class="hook-category">
+                <h5>⚡ 副作用 Hook</h5>
+                <div class="hook-list">
+                    <span class="hook-item">useKeyboardInput</span>
+                    <span class="hook-item">useFocusManagement</span>
+                    <span class="hook-item">useAutoScroll</span>
+                    <span class="hook-item">useResize</span>
+                    <span class="hook-item">useClipboard</span>
+                    <span class="hook-item">useNotification</span>
+                    <span class="hook-item">useAnimation</span>
+                    <span class="hook-item">useDebounce</span>
+                    <span class="hook-item">useInterval</span>
+                    <span class="hook-item">useTimeout</span>
+                </div>
+            </div>
+
+            <div class="hook-category">
+                <h5>🔍 数据查询 Hook</h5>
+                <div class="hook-list">
+                    <span class="hook-item">useApiQuery</span>
+                    <span class="hook-item">useStreamingResponse</span>
+                    <span class="hook-item">useTokenUsage</span>
+                    <span class="hook-item">useCostTracker</span>
+                    <span class="hook-item">useFileWatcher</span>
+                    <span class="hook-item">useGitStatus</span>
+                    <span class="hook-item">useProjectContext</span>
+                    <span class="hook-item">useModelConfig</span>
+                </div>
+            </div>
+
+            <div class="hook-category">
+                <h5>🏗️ 上下文 Hook</h5>
+                <div class="hook-list">
+                    <span class="hook-item">useOverlayContext</span>
+                    <span class="hook-item">useModalContext</span>
+                    <span class="hook-item">useNotificationContext</span>
+                    <span class="hook-item">useVoiceContext</span>
+                    <span class="hook-item">useStatsContext</span>
+                    <span class="hook-item">useMailboxContext</span>
+                    <span class="hook-item">useQueueContext</span>
+                    <span class="hook-item">usePromptOverlay</span>
+                </div>
+            </div>
+
+            <div class="hook-category">
+                <h5>🔧 工具交互 Hook</h5>
+                <div class="hook-list">
+                    <span class="hook-item">useBashTool</span>
+                    <span class="hook-item">useFileEditTool</span>
+                    <span class="hook-item">useGrepTool</span>
+                    <span class="hook-item">useGlobTool</span>
+                    <span class="hook-item">useMcpTool</span>
+                    <span class="hook-item">useToolExecution</span>
+                    <span class="hook-item">useToolPermission</span>
+                    <span class="hook-item">useToolResult</span>
+                </div>
+            </div>
+
+<pre><code><span class="code-comment">// hooks/useTerminalSize.ts - 终端尺寸监听 Hook</span>
+<span class="code-keyword">function</span> <span class="code-func">useTerminalSize</span>(): { columns: <span class="code-type">number</span>; rows: <span class="code-type">number</span> } {
+  <span class="code-keyword">const</span> [size, setSize] = <span class="code-func">useState</span>({
+    columns: process.stdout.columns ?? <span class="code-const">80</span>,
+    rows: process.stdout.rows ?? <span class="code-const">24</span>,
+  });
+
+  <span class="code-func">useEffect</span>(() =&gt; {
+    <span class="code-keyword">const</span> <span class="code-func">handleResize</span> = () =&gt; {
+      <span class="code-func">setSize</span>({
+        columns: process.stdout.columns,
+        rows: process.stdout.rows,
+      });
+    };
+
+    process.stdout.<span class="code-func">on</span>(<span class="code-string">'resize'</span>, handleResize);
+    <span class="code-keyword">return</span> () =&gt; process.stdout.<span class="code-func">off</span>(<span class="code-string">'resize'</span>, handleResize);
+  }, []);
+
+  <span class="code-keyword">return</span> size;
+}
+
+<span class="code-comment">// hooks/useScrollPosition.ts - 滚动位置管理 Hook</span>
+<span class="code-keyword">function</span> <span class="code-func">useScrollPosition</span>(contentHeight: <span class="code-type">number</span>, viewHeight: <span class="code-type">number</span>) {
+  <span class="code-keyword">const</span> [scrollTop, setScrollTop] = <span class="code-func">useState</span>(<span class="code-const">0</span>);
+  <span class="code-keyword">const</span> maxScroll = Math.<span class="code-func">max</span>(<span class="code-const">0</span>, contentHeight - viewHeight);
+
+  <span class="code-keyword">const</span> <span class="code-func">scrollBy</span> = <span class="code-func">useCallback</span>((delta: <span class="code-type">number</span>) =&gt; {
+    <span class="code-func">setScrollTop</span>(prev =&gt; Math.<span class="code-func">max</span>(<span class="code-const">0</span>, Math.<span class="code-func">min</span>(maxScroll, prev + delta)));
+  }, [maxScroll]);
+
+  <span class="code-keyword">return</span> { scrollTop, scrollBy, maxScroll };
+}</code></pre>
+
+            <div class="info-card green">
+                <h4>🎯 关键 Hook 详解</h4>
+                <ul>
+                    <li><code>useTerminalSize</code> — 监听终端窗口大小变化，自动触发 Yoga 重新布局</li>
+                    <li><code>useScrollPosition</code> — 管理可滚动区域的位置状态，支持平滑滚动和边界检测</li>
+                    <li><code>useKeyboardInput</code> — 封装原始 stdin 输入，将按键事件转换为语义化动作</li>
+                    <li><code>useFocusManagement</code> — 实现 Tab 键焦点切换逻辑，管理焦点栈和焦点捕获</li>
+                    <li><code>useStreamingResponse</code> — 处理 API 流式响应，逐 token 更新 UI 展示</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 7: 键盘与输入系统 -->
+        <section class="section" id="section-7">
+            <div class="section-header">
+                <div class="section-number">7</div>
+                <h2 class="section-title">键盘与输入系统</h2>
+            </div>
+
+            <p>终端应用的交互完全依赖键盘输入。Claude Code 构建了一个多层次的键盘输入系统，从原始的 stdin 字节流到语义化的用户动作，每一层都经过精心设计。</p>
+
+            <div class="info-card">
+                <h4>⌨️ Keybindings 系统</h4>
+                <p>Claude Code 的快捷键系统支持全局绑定和上下文相关绑定：</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>快捷键</th>
+                        <th>功能</th>
+                        <th>上下文</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>Enter</code></td>
+                        <td>发送消息</td>
+                        <td>输入框</td>
+                    </tr>
+                    <tr>
+                        <td><code>Escape</code></td>
+                        <td>中断当前操作 / 关闭叠加层</td>
+                        <td>全局</td>
+                    </tr>
+                    <tr>
+                        <td><code>Tab</code></td>
+                        <td>触发自动补全</td>
+                        <td>输入框</td>
+                    </tr>
+                    <tr>
+                        <td><code>↑ / ↓</code></td>
+                        <td>浏览历史 / 滚动</td>
+                        <td>输入框 / 消息列表</td>
+                    </tr>
+                    <tr>
+                        <td><code>Ctrl+C</code></td>
+                        <td>中止执行 / 退出</td>
+                        <td>全局</td>
+                    </tr>
+                    <tr>
+                        <td><code>Ctrl+L</code></td>
+                        <td>清屏</td>
+                        <td>全局</td>
+                    </tr>
+                    <tr>
+                        <td><code>/</code></td>
+                        <td>触发斜杠命令菜单</td>
+                        <td>输入框首字符</td>
+                    </tr>
+                </tbody>
+            </table>
+
+<pre><code><span class="code-comment">// 键盘输入处理流程</span>
+<span class="code-keyword">class</span> <span class="code-type">KeyboardHandler</span> {
+  <span class="code-keyword">private</span> bindings: <span class="code-type">Map</span>&lt;<span class="code-type">string</span>, <span class="code-type">KeyAction</span>&gt;;
+
+  <span class="code-func">handleInput</span>(data: <span class="code-type">Buffer</span>): <span class="code-type">void</span> {
+    <span class="code-keyword">const</span> key = <span class="code-func">parseKeySequence</span>(data);
+
+    <span class="code-comment">// ESC 中断检测 - 最高优先级</span>
+    <span class="code-keyword">if</span> (key === <span class="code-string">'escape'</span>) {
+      <span class="code-keyword">this</span>.<span class="code-func">handleEscapeInterrupt</span>();
+      <span class="code-keyword">return</span>;
+    }
+
+    <span class="code-comment">// 查找上下文相关的快捷键绑定</span>
+    <span class="code-keyword">const</span> action = <span class="code-keyword">this</span>.bindings.<span class="code-func">get</span>(key);
+    <span class="code-keyword">if</span> (action &amp;&amp; action.<span class="code-func">isActive</span>()) {
+      action.<span class="code-func">execute</span>();
+    }
+  }
+
+  <span class="code-func">handleEscapeInterrupt</span>(): <span class="code-type">void</span> {
+    <span class="code-comment">// ESC 键实现多级中断</span>
+    <span class="code-comment">// 1. 关闭打开的叠加层/模态框</span>
+    <span class="code-comment">// 2. 取消当前工具执行</span>
+    <span class="code-comment">// 3. 中止 AI 响应生成</span>
+  }
+}</code></pre>
+
+            <div class="highlight-box green">
+                <p><strong>🎤 语音输入集成</strong>：Claude Code 集成了语音输入功能。通过 <code>useVoiceContext</code> Hook 和 <code>VoiceContext</code> 上下文，语音输入与键盘输入共享同一套输入处理管道。语音识别的文本被注入到 PromptInput 组件中，如同用户手动键入一样。</p>
+            </div>
+
+            <div class="info-card purple">
+                <h4>📝 Tab 补全系统</h4>
+                <p>Tab 补全是终端用户体验的关键特性。Claude Code 的补全系统支持多种补全源：</p>
+                <ul>
+                    <li><strong>文件路径补全</strong> — 基于当前工作目录的文件系统遍历，支持 <code>@</code> 前缀触发</li>
+                    <li><strong>斜杠命令补全</strong> — <code>/help</code>、<code>/clear</code>、<code>/config</code> 等内置命令</li>
+                    <li><strong>历史记录补全</strong> — 基于输入历史的模糊匹配</li>
+                    <li><strong>上下文感知补全</strong> — 根据当前对话上下文提供智能建议</li>
+                </ul>
+            </div>
+
+            <div class="info-card orange">
+                <h4>🔀 斜杠命令系统</h4>
+                <p>斜杠命令提供快速访问常用功能的方式。当用户在输入框首位输入 <code>/</code> 时，触发命令菜单：</p>
+                <ul>
+                    <li><code>/help</code> — 显示帮助信息</li>
+                    <li><code>/clear</code> — 清除对话历史</li>
+                    <li><code>/config</code> — 打开设置面板</li>
+                    <li><code>/model</code> — 切换 AI 模型</li>
+                    <li><code>/cost</code> — 查看当前会话费用</li>
+                    <li><code>/compact</code> — 压缩上下文</li>
+                    <li><code>/vim</code> 和 <code>/editor</code> — 打开外部编辑器</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Section 8: 屏幕与布局 -->
+        <section class="section" id="section-8">
+            <div class="section-header">
+                <div class="section-number">8</div>
+                <h2 class="section-title">屏幕与布局</h2>
+            </div>
+
+            <p>Claude Code 的屏幕管理系统位于 <code>screens/</code> 目录中，通过 <code>FullscreenLayout</code> 和 <code>OverlayManager</code> 等核心组件，结合 9 个 React Context 实现了完整的布局与状态管理架构。</p>
+
+            <div class="info-card">
+                <h4>🖼️ FullscreenLayout 全屏布局</h4>
+                <p>FullscreenLayout 是 Claude Code 的根布局组件，它占满整个终端窗口，管理三个核心区域：</p>
+                <ul>
+                    <li><strong>消息区域</strong> — 占据主体空间，可滚动的对话消息列表</li>
+                    <li><strong>输入区域</strong> — 底部固定的用户输入框</li>
+                    <li><strong>状态栏</strong> — 显示模型、费用等运行信息</li>
+                </ul>
+            </div>
+
+<pre><code><span class="code-comment">// screens/FullscreenLayout.tsx - 根布局</span>
+<span class="code-keyword">const</span> <span class="code-type">FullscreenLayout</span>: <span class="code-type">FC</span> = () =&gt; {
+  <span class="code-keyword">const</span> { rows, columns } = <span class="code-func">useTerminalSize</span>();
+
+  <span class="code-keyword">return</span> (
+    &lt;<span class="code-type">Box</span> flexDirection=<span class="code-string">"column"</span> width={columns} height={rows}&gt;
+      <span class="code-comment">{/* 消息展示区 - 占据剩余空间 */}</span>
+      &lt;<span class="code-type">Box</span> flexGrow={<span class="code-const">1</span>} flexDirection=<span class="code-string">"column"</span> overflow=<span class="code-string">"hidden"</span>&gt;
+        &lt;<span class="code-type">MessageList</span> /&gt;
+      &lt;/<span class="code-type">Box</span>&gt;
+
+      <span class="code-comment">{/* 输入区 - 固定在底部 */}</span>
+      &lt;<span class="code-type">Box</span> flexShrink={<span class="code-const">0</span>}&gt;
+        &lt;<span class="code-type">PromptInput</span> /&gt;
+      &lt;/<span class="code-type">Box</span>&gt;
+
+      <span class="code-comment">{/* 状态栏 */}</span>
+      &lt;<span class="code-type">Box</span> flexShrink={<span class="code-const">0</span>}&gt;
+        &lt;<span class="code-type">StatusBar</span> /&gt;
+      &lt;/<span class="code-type">Box</span>&gt;
+
+      <span class="code-comment">{/* 叠加层容器 */}</span>
+      &lt;<span class="code-type">OverlayManager</span> /&gt;
+    &lt;/<span class="code-type">Box</span>&gt;
+  );
+};</code></pre>
+
+            <div class="info-card purple">
+                <h4>🪟 OverlayManager 叠加层管理</h4>
+                <p><code>OverlayManager</code> 管理所有浮动在主界面之上的 UI 层，实现类似浏览器模态框的效果：</p>
+                <ul>
+                    <li><strong>权限确认弹窗</strong> — 工具执行前的用户授权对话框</li>
+                    <li><strong>自动补全面板</strong> — 浮动在输入框上方的补全建议列表</li>
+                    <li><strong>设置页面</strong> — 全屏覆盖的配置面板</li>
+                    <li><strong>帮助文档</strong> — 快捷键说明和功能引导</li>
+                </ul>
+                <p>叠加层通过 z-index 概念（在终端中通过渲染顺序实现）确保正确的层级关系。</p>
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>🔗 9个 React Context 详解</strong>：Claude Code 使用 9 个独立的 React Context 来管理不同维度的全局状态，实现精确的状态分发和避免不必要的重渲染。</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Context 名称</th>
+                        <th>用途</th>
+                        <th>管理的状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>QueuedMessageContext</code></td>
+                        <td>消息队列</td>
+                        <td>待发送和待处理的消息列表</td>
+                    </tr>
+                    <tr>
+                        <td><code>fpsMetrics</code></td>
+                        <td>性能监控</td>
+                        <td>帧率、渲染耗时、Yoga 布局时间</td>
+                    </tr>
+                    <tr>
+                        <td><code>mailbox</code></td>
+                        <td>跨组件通信</td>
+                        <td>组件间的异步消息传递通道</td>
+                    </tr>
+                    <tr>
+                        <td><code>modalContext</code></td>
+                        <td>模态框管理</td>
+                        <td>当前打开的模态框栈和配置</td>
+                    </tr>
+                    <tr>
+                        <td><code>notifications</code></td>
+                        <td>通知系统</td>
+                        <td>Toast 通知队列和显示状态</td>
+                    </tr>
+                    <tr>
+                        <td><code>overlayContext</code></td>
+                        <td>叠加层控制</td>
+                        <td>叠加层显示/隐藏状态和配置</td>
+                    </tr>
+                    <tr>
+                        <td><code>promptOverlayContext</code></td>
+                        <td>输入框叠加</td>
+                        <td>输入框关联的浮动面板状态</td>
+                    </tr>
+                    <tr>
+                        <td><code>stats</code></td>
+                        <td>统计信息</td>
+                        <td>Token 用量、API 调用次数、费用</td>
+                    </tr>
+                    <tr>
+                        <td><code>voice</code></td>
+                        <td>语音输入</td>
+                        <td>语音录制状态、识别结果</td>
+                    </tr>
+                </tbody>
+            </table>
+
+<pre><code><span class="code-comment">// contexts/ - Context 提供器嵌套结构</span>
+<span class="code-keyword">const</span> <span class="code-type">AppProviders</span>: <span class="code-type">FC</span> = ({ children }) =&gt; (
+  &lt;<span class="code-type">QueuedMessageProvider</span>&gt;
+    &lt;<span class="code-type">FpsMetricsProvider</span>&gt;
+      &lt;<span class="code-type">MailboxProvider</span>&gt;
+        &lt;<span class="code-type">ModalProvider</span>&gt;
+          &lt;<span class="code-type">NotificationProvider</span>&gt;
+            &lt;<span class="code-type">OverlayProvider</span>&gt;
+              &lt;<span class="code-type">PromptOverlayProvider</span>&gt;
+                &lt;<span class="code-type">StatsProvider</span>&gt;
+                  &lt;<span class="code-type">VoiceProvider</span>&gt;
+                    {children}
+                  &lt;/<span class="code-type">VoiceProvider</span>&gt;
+                &lt;/<span class="code-type">StatsProvider</span>&gt;
+              &lt;/<span class="code-type">PromptOverlayProvider</span>&gt;
+            &lt;/<span class="code-type">OverlayProvider</span>&gt;
+          &lt;/<span class="code-type">NotificationProvider</span>&gt;
+        &lt;/<span class="code-type">ModalProvider</span>&gt;
+      &lt;/<span class="code-type">MailboxProvider</span>&gt;
+    &lt;/<span class="code-type">FpsMetricsProvider</span>&gt;
+  &lt;/<span class="code-type">QueuedMessageProvider</span>&gt;
+);
+
+<span class="code-comment">// 使用 Context 的组件示例</span>
+<span class="code-keyword">function</span> <span class="code-func">CostDisplay</span>() {
+  <span class="code-keyword">const</span> { totalCost, tokenCount } = <span class="code-func">useContext</span>(<span class="code-type">StatsContext</span>);
+  <span class="code-keyword">const</span> { fps, lastYogaMs } = <span class="code-func">useContext</span>(<span class="code-type">FpsMetricsContext</span>);
+
+  <span class="code-keyword">return</span> (
+    &lt;<span class="code-type">Box</span>&gt;
+      &lt;<span class="code-type">Text</span> color=<span class="code-string">"green"</span>&gt;${totalCost.<span class="code-func">toFixed</span>(<span class="code-const">4</span>)}&lt;/<span class="code-type">Text</span>&gt;
+      &lt;<span class="code-type">Text</span> color=<span class="code-string">"dim"</span>&gt; | {tokenCount} tokens&lt;/<span class="code-type">Text</span>&gt;
+      &lt;<span class="code-type">Text</span> color=<span class="code-string">"dim"</span>&gt; | {fps} fps&lt;/<span class="code-type">Text</span>&gt;
+    &lt;/<span class="code-type">Box</span>&gt;
+  );
+}</code></pre>
+
+            <div class="info-card cyan">
+                <h4>📊 Context 分离设计哲学</h4>
+                <p>将全局状态分散到 9 个独立 Context 而非使用单一的全局 Store 是一个深思熟虑的架构决策：</p>
+                <ul>
+                    <li><strong>精确订阅</strong> — 组件只订阅需要的 Context，避免不相关状态变化引起的重渲染</li>
+                    <li><strong>并行更新</strong> — 不同 Context 的状态更新互不阻塞，提高渲染吞吐量</li>
+                    <li><strong>关注点分离</strong> — 每个 Context 聚焦单一职责，降低状态管理复杂度</li>
+                    <li><strong>测试友好</strong> — 各 Context 可独立 mock，简化组件单元测试</li>
+                </ul>
+                <p>在终端渲染环境中，这种设计尤为重要——每次不必要的重渲染都会导致可感知的终端闪烁。</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-links">
+                <a href="index.html">← 深度报告索引</a>
+                <a href="../reports/index.html">📊 标准报告索引</a>
+            </div>
+            <p class="footer-note">Claude Code v2.1.88 终端 UI 渲染引擎深度技术分析</p>
+        </footer>
+    </div>
+
+    <script>
+        // Particle Background Animation
+        (function() {
+            const canvas = document.getElementById('particles-canvas');
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const particles = [];
+            const PARTICLE_COUNT = 12;
+            const colors = ['#58a6ff', '#bc8cff', '#7ee787', '#f0883e', '#f778ba', '#76e4f7'];
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    radius: Math.random() * 2 + 1,
+                    color: colors[i % colors.length],
+                    opacity: Math.random() * 0.3 + 0.1,
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fill();
+                });
+
+                // Draw connections
+                ctx.globalAlpha = 0.05;
+                ctx.strokeStyle = '#58a6ff';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 200) {
+                            ctx.globalAlpha = 0.05 * (1 - dist / 200);
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                ctx.globalAlpha = 1;
+                requestAnimationFrame(animate);
+            }
+            animate();
+        })();
+
+        // Sidebar Toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // Close sidebar when clicking a link on mobile
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 900) {
+                    document.getElementById('sidebar').classList.remove('open');
+                }
+            });
+        });
+
+        // IntersectionObserver for active TOC state
+        (function() {
+            const sections = document.querySelectorAll('.section[id]');
+            const tocLinks = document.querySelectorAll('.sidebar a[data-section]');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        tocLinks.forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('data-section') === id);
+                        });
+                    }
+                });
+            }, {
+                rootMargin: '-80px 0px -60% 0px',
+                threshold: 0
+            });
+
+            sections.forEach(section => observer.observe(section));
+        })();
+    </script>
+</body>
+</html>
