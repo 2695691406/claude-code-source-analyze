@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Think Blow — 从源码到产品的跨越式创新</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* Particles */
+.particle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+.particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--accent-blue); opacity: 0; animation: particleFloat linear infinite; }
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+/* Layout */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* Fade in */
+.fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease, transform 0.8s ease; }
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+
+/* Hero */
+.hero { position: relative; padding: 110px 0 50px; text-align: center; overflow: hidden; }
+.hero::before {
+  content: ''; position: absolute; top: -60%; left: -60%; width: 220%; height: 220%;
+  background: radial-gradient(ellipse at center, rgba(188,140,255,0.1) 0%, rgba(88,166,255,0.05) 40%, transparent 70%);
+  animation: heroGlow 10s ease-in-out infinite alternate;
+}
+@keyframes heroGlow {
+  0%   { transform: translate(-3%, -3%) rotate(0deg) scale(1); }
+  100% { transform: translate(3%, 3%) rotate(5deg) scale(1.08); }
+}
+.hero-badge {
+  display: inline-block; padding: 6px 20px;
+  background: linear-gradient(135deg, rgba(188,140,255,0.15), rgba(88,166,255,0.15));
+  border: 1px solid rgba(188,140,255,0.35); border-radius: 20px;
+  font-size: 0.8rem; font-weight: 700; color: var(--accent-purple);
+  letter-spacing: 2px; margin-bottom: 28px; text-transform: uppercase;
+}
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; line-height: 1.25; margin-bottom: 20px;
+}
+.hero h1 .emoji { -webkit-text-fill-color: initial; }
+.hero h1 .grad {
+  background: linear-gradient(135deg, #bc8cff 0%, #58a6ff 40%, #7ee787 70%, #f0883e 100%);
+  background-size: 200% 200%; animation: gradShift 6s ease-in-out infinite;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+@keyframes gradShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.hero .subtitle { font-size: clamp(0.9rem, 2vw, 1.1rem); color: var(--text-secondary); max-width: 640px; margin: 0 auto; line-height: 1.7; }
+.hero-line { width: 60px; height: 3px; background: var(--gradient-primary); margin: 36px auto 0; border-radius: 2px; }
+
+/* Stats Bar */
+.stats-bar { padding: 30px 0 50px; }
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+.stat-item {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 24px 16px; text-align: center; position: relative; overflow: hidden;
+  transition: all var(--transition);
+}
+.stat-item::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; opacity: 0;
+  transition: opacity var(--transition);
+}
+.stat-item:hover { transform: translateY(-4px); border-color: var(--border-highlight); }
+.stat-item:hover::before { opacity: 1; }
+.stat-icon { font-size: 1.6rem; margin-bottom: 8px; display: block; }
+.stat-value {
+  font-size: 1.8rem; font-weight: 800; display: block; margin-bottom: 4px;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.stat-label { font-size: 0.82rem; color: var(--text-secondary); }
+.stat-item:nth-child(1) .stat-value { background: linear-gradient(135deg, #58a6ff, #bc8cff); -webkit-background-clip: text; background-clip: text; }
+.stat-item:nth-child(1)::before { background: linear-gradient(90deg, #58a6ff, #bc8cff); }
+.stat-item:nth-child(1):hover { box-shadow: var(--glow-blue); }
+.stat-item:nth-child(2) .stat-value { background: linear-gradient(135deg, #7ee787, #58a6ff); -webkit-background-clip: text; background-clip: text; }
+.stat-item:nth-child(2)::before { background: linear-gradient(90deg, #7ee787, #58a6ff); }
+.stat-item:nth-child(2):hover { box-shadow: var(--glow-green); }
+.stat-item:nth-child(3) .stat-value { background: linear-gradient(135deg, #bc8cff, #f778ba); -webkit-background-clip: text; background-clip: text; }
+.stat-item:nth-child(3)::before { background: linear-gradient(90deg, #bc8cff, #f778ba); }
+.stat-item:nth-child(3):hover { box-shadow: var(--glow-purple); }
+.stat-item:nth-child(4) .stat-value { background: linear-gradient(135deg, #f0883e, #f5d547); -webkit-background-clip: text; background-clip: text; }
+.stat-item:nth-child(4)::before { background: linear-gradient(90deg, #f0883e, #f5d547); }
+.stat-item:nth-child(4):hover { box-shadow: 0 0 20px rgba(240,136,62,0.3); }
+
+/* Report Cards */
+.reports { padding: 10px 0 60px; }
+.reports-heading { text-align: center; margin-bottom: 40px; }
+.reports-heading h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
+.reports-heading p { color: var(--text-secondary); font-size: 0.95rem; }
+.card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+
+.report-card {
+  display: flex; flex-direction: column; background: var(--bg-card);
+  border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 32px 28px; transition: all var(--transition);
+  position: relative; overflow: hidden; text-decoration: none; color: inherit; cursor: pointer;
+}
+.report-card::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; opacity: 0;
+  transition: opacity var(--transition);
+}
+.report-card::after {
+  content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(135deg, transparent 50%, rgba(88,166,255,0.03) 100%);
+  pointer-events: none;
+}
+.report-card:hover { transform: translateY(-6px); border-color: var(--border-highlight); }
+.report-card:hover::before { opacity: 1; }
+
+/* Card accents */
+.card-blue::before  { background: linear-gradient(90deg, #58a6ff, #bc8cff); }
+.card-blue:hover    { box-shadow: 0 12px 40px rgba(88,166,255,0.15), var(--glow-blue); }
+.card-green::before { background: linear-gradient(90deg, #7ee787, #76e4f7); }
+.card-green:hover   { box-shadow: 0 12px 40px rgba(126,231,135,0.15), var(--glow-green); }
+.card-purple::before{ background: linear-gradient(90deg, #bc8cff, #f778ba); }
+.card-purple:hover  { box-shadow: 0 12px 40px rgba(188,140,255,0.15), var(--glow-purple); }
+.card-orange::before{ background: linear-gradient(90deg, #f0883e, #f5d547); }
+.card-orange:hover  { box-shadow: 0 12px 40px rgba(240,136,62,0.15), 0 0 20px rgba(240,136,62,0.3); }
+
+.card-icon { font-size: 2.4rem; margin-bottom: 16px; }
+.card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
+.card-subtitle { font-size: 0.8rem; font-weight: 600; margin-bottom: 12px; letter-spacing: 0.5px; }
+.card-blue .card-subtitle  { color: var(--accent-blue); }
+.card-green .card-subtitle { color: var(--accent-green); }
+.card-purple .card-subtitle{ color: var(--accent-purple); }
+.card-orange .card-subtitle{ color: var(--accent-orange); }
+.card-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.65; margin-bottom: 18px; flex: 1; }
+
+.card-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.card-tag {
+  font-size: 0.72rem; padding: 3px 10px; border-radius: 12px;
+  background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color);
+}
+.card-arrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.85rem; font-weight: 600; transition: all var(--transition);
+}
+.card-blue .card-arrow  { color: var(--accent-blue); }
+.card-green .card-arrow { color: var(--accent-green); }
+.card-purple .card-arrow{ color: var(--accent-purple); }
+.card-orange .card-arrow{ color: var(--accent-orange); }
+.report-card:hover .card-arrow { gap: 14px; }
+.card-arrow svg { width: 16px; height: 16px; transition: transform var(--transition); }
+.report-card:hover .card-arrow svg { transform: translateX(4px); }
+
+/* Also See */
+.also-see {
+  padding: 40px 0 30px; text-align: center;
+}
+.also-see-link {
+  display: inline-flex; align-items: center; gap: 10px; padding: 14px 32px;
+  background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 30px; font-size: 0.95rem; font-weight: 500; color: var(--accent-blue);
+  transition: all var(--transition);
+}
+.also-see-link:hover {
+  background: rgba(88,166,255,0.12); border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue); transform: translateY(-2px); color: var(--accent-blue);
+}
+
+/* Footer */
+.footer {
+  padding: 40px 0; text-align: center; border-top: 1px solid var(--border-color);
+  margin-top: 20px;
+}
+.footer p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.8; }
+.footer .highlight { color: var(--accent-purple); font-weight: 600; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .card-grid { grid-template-columns: 1fr; }
+  .hero { padding: 80px 0 40px; }
+}
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="particle-bg">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-badge">THINK BLOW 2024</div>
+    <h1><span class="emoji">💡</span> <span class="grad">Think Blow — 从源码到产品的跨越式创新</span></h1>
+    <p class="subtitle">基于 Claude Code v2.1.88 源码深度分析的产品化思考与创新蓝图</p>
+    <div class="hero-line"></div>
+  </div>
+</header>
+
+<!-- Stats Bar -->
+<section class="stats-bar fade-in">
+  <div class="container">
+    <div class="stats-row">
+      <div class="stat-item">
+        <span class="stat-icon">🔬</span>
+        <span class="stat-value">15+</span>
+        <span class="stat-label">核心能力</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-icon">🏗️</span>
+        <span class="stat-value">20+</span>
+        <span class="stat-label">产品方案</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-icon">🧬</span>
+        <span class="stat-value">10</span>
+        <span class="stat-label">设计模式</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-icon">🎯</span>
+        <span class="stat-value">12</span>
+        <span class="stat-label">创意产品</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Report Cards -->
+<section class="reports fade-in">
+  <div class="container">
+    <div class="reports-heading">
+      <h2>📑 深度分析报告</h2>
+      <p>四个维度，从能力提取到产品落地的完整路径</p>
+    </div>
+    <div class="card-grid">
+
+      <a href="01-core-capabilities-extraction.html" class="report-card card-blue">
+        <span class="card-icon">🔬</span>
+        <div class="card-title">源码核心能力提取</div>
+        <div class="card-subtitle">Core Capabilities Extraction</div>
+        <p class="card-desc">从 205K LOC 中提取 15 个可独立产品化的核心能力，含详细架构分析与产品化方向</p>
+        <div class="card-tags">
+          <span class="card-tag">15 个能力</span>
+          <span class="card-tag">架构分析</span>
+          <span class="card-tag">产品化路径</span>
+        </div>
+        <span class="card-arrow">阅读报告 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 010-1.06z"/></svg></span>
+      </a>
+
+      <a href="02-hema-innovation-blueprint.html" class="report-card card-green">
+        <span class="card-icon">🏗️</span>
+        <div class="card-title">盒马技术部应用创新蓝图</div>
+        <div class="card-subtitle">Hema Innovation Blueprint</div>
+        <p class="card-desc">为盒马技术部规划 20+ AI 产品方案，覆盖前台创新、后台工具、平台基础设施与提效工具链</p>
+        <div class="card-tags">
+          <span class="card-tag">20+ 方案</span>
+          <span class="card-tag">四大维度</span>
+          <span class="card-tag">12 月路线图</span>
+        </div>
+        <span class="card-arrow">阅读报告 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 010-1.06z"/></svg></span>
+      </a>
+
+      <a href="03-agent-design-patterns.html" class="report-card card-purple">
+        <span class="card-icon">🧬</span>
+        <div class="card-title">通用 Agent 设计模式</div>
+        <div class="card-subtitle">Agent Design Patterns</div>
+        <p class="card-desc">提炼 10 大经过生产验证的 Agent 设计模式，含 TypeScript 代码示例与工程实践</p>
+        <div class="card-tags">
+          <span class="card-tag">10 模式</span>
+          <span class="card-tag">代码示例</span>
+          <span class="card-tag">工程实践</span>
+        </div>
+        <span class="card-arrow">阅读报告 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 010-1.06z"/></svg></span>
+      </a>
+
+      <a href="04-standalone-product-ideas.html" class="report-card card-orange">
+        <span class="card-icon">🎯</span>
+        <div class="card-title">独立趣味产品创意库</div>
+        <div class="card-subtitle">Standalone Product Ideas</div>
+        <p class="card-desc">12 个可独立做成有趣产品的功能创意，含 MVP 规划、技术路径与商业模式</p>
+        <div class="card-tags">
+          <span class="card-tag">12 创意</span>
+          <span class="card-tag">MVP 规划</span>
+          <span class="card-tag">商业模式</span>
+        </div>
+        <span class="card-arrow">阅读报告 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 010-1.06z"/></svg></span>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- Also See -->
+<section class="also-see fade-in">
+  <div class="container">
+    <a href="../reports/index.html" class="also-see-link">
+      📊 查看源码工程设计分析报告 →
+    </a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <p>
+      <span class="highlight">Think Blow</span> · 基于 Claude Code v2.1.88 源码分析<br>
+      从 205,000 行 TypeScript 源码中提炼产品化思考与创新灵感
+    </p>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.15 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
