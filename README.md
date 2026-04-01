@@ -12,7 +12,7 @@
 
 ## 分析报告预览
 
-![reports/index.html 截图](https://github.com/user-attachments/assets/728ad836-66fb-44e0-a7b0-e0c7127ff396)
+![Claude Code v2.1.88 源码工程设计分析](https://github.com/user-attachments/assets/92570375-ab1a-461c-a14a-8aed6779e734)
 
 ## 概述
 
@@ -28,21 +28,41 @@
 ## 目录结构
 
 ```
-restored-src/src/
-├── main.tsx              # CLI 入口
-├── tools/                # 工具实现（Bash、FileEdit、Grep、MCP 等 30+ 个）
-├── commands/             # 命令实现（commit、review、config 等 40+ 个）
-├── services/             # API、MCP、分析等服务
-├── utils/                # 工具函数（git、model、auth、env 等）
-├── context/              # React Context
-├── coordinator/          # 多 Agent 协调模式
-├── assistant/            # 助手模式（KAIROS）
-├── buddy/                # AI 伴侣 UI
-├── remote/               # 远程会话
-├── plugins/              # 插件系统
-├── skills/               # 技能系统
-├── voice/                # 语音交互
-└── vim/                  # Vim 模式
+claude-code-source-analyze/
+├── restored-src/src/         # 还原的 TypeScript 源码
+│   ├── main.tsx              # CLI 入口
+│   ├── tools/                # 工具实现（Bash、FileEdit、Grep、MCP 等 43+ 个）
+│   ├── commands/             # 命令实现（commit、review、config 等 86+ 个）
+│   ├── services/             # API、MCP、分析等服务（21+ 个核心服务）
+│   ├── utils/                # 工具函数（git、model、auth、env 等）
+│   ├── context/              # React Context
+│   ├── coordinator/          # 多 Agent 协调模式
+│   ├── assistant/            # 助手模式（KAIROS）
+│   ├── buddy/                # AI 伴侣 UI
+│   ├── remote/               # 远程会话
+│   ├── plugins/              # 插件系统
+│   ├── skills/               # 技能系统
+│   ├── voice/                # 语音交互
+│   └── vim/                  # Vim 模式（8 种运行模式）
+│
+├── docs/                     # 架构与设计分析文档（Markdown）
+│   ├── ARCHITECTURE.md       # 整体架构概览
+│   ├── MODULES.md            # 各目录模块详解
+│   ├── COMMANDS.md           # 86+ 条命令分析
+│   ├── TOOLS.md              # 43+ 个 Agent 工具分析
+│   ├── CORE_FLOW_ANALYSIS.md # 核心流程分析
+│   ├── SERVICES_ANALYSIS.md  # 服务层分析
+│   ├── AGENT_DESIGN.md       # Agent 设计模式
+│   ├── AGENT_DESIGN_DEEP_DIVE.md  # Agent 深度剖析
+│   └── DESIGN_DEEP_DIVE.md   # 整体设计深度剖析
+│
+└── reports/                  # 可视化 HTML 分析报告
+    ├── index.html            # 总览（技术栈、统计数据、系统架构）
+    ├── architecture.html     # 架构层次详细报告
+    ├── tools-commands.html   # 工具与命令报告
+    ├── agent-design.html     # Agent 设计报告
+    ├── prompt-context.html   # Prompt 与上下文报告
+    └── deep-analysis.html    # 深度分析报告
 ```
 
 ## 声明
