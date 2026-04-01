@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🕵️ 隐藏功能与未公开特性审计 - Claude Code v2.1.88 深度技术审计</title>
+<style>
+:root {
+  --bg-primary:#0d1117; --bg-secondary:#161b22; --bg-tertiary:#21262d; --bg-card:#1c2128;
+  --border-color:#30363d; --border-highlight:#58a6ff; --text-primary:#e6edf3; --text-secondary:#8b949e; --text-muted:#6e7681;
+  --accent-blue:#58a6ff; --accent-purple:#bc8cff; --accent-green:#7ee787; --accent-orange:#f0883e; --accent-pink:#f778ba; --accent-cyan:#76e4f7; --accent-yellow:#f5d547;
+  --gradient-primary:linear-gradient(135deg,#58a6ff 0%,#bc8cff 100%); --glow-blue:0 0 20px rgba(88,166,255,.3);
+  --radius-sm:6px; --radius-md:12px; --transition:.3s cubic-bezier(.4,0,.2,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box} html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",Helvetica,Arial,sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.7;min-height:100vh;overflow-x:hidden}
+a{color:var(--accent-blue);text-decoration:none} a:hover{text-decoration:underline}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-track{background:var(--bg-primary)} ::-webkit-scrollbar-thumb{background:var(--bg-tertiary);border-radius:4px}
+.particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}.particle{position:absolute;border-radius:50%;animation:particleFloat linear infinite;opacity:0}
+@keyframes particleFloat{0%{opacity:0;transform:translateY(100vh) scale(0)}10%{opacity:.6}90%{opacity:.6}100%{opacity:0;transform:translateY(-10vh) scale(1)}}
+.particle:nth-child(1){width:3px;height:3px;left:6%;background:var(--accent-blue);animation-duration:18s}.particle:nth-child(2){width:2px;height:2px;left:15%;background:var(--accent-purple);animation-duration:22s;animation-delay:1.5s}.particle:nth-child(3){width:4px;height:4px;left:24%;background:var(--accent-green);animation-duration:15s;animation-delay:3s}.particle:nth-child(4){width:2px;height:2px;left:33%;background:var(--accent-cyan);animation-duration:25s;animation-delay:.8s}.particle:nth-child(5){width:3px;height:3px;left:42%;background:var(--accent-pink);animation-duration:20s;animation-delay:5s}.particle:nth-child(6){width:2px;height:2px;left:51%;background:var(--accent-orange);animation-duration:17s;animation-delay:2.2s}.particle:nth-child(7){width:4px;height:4px;left:60%;background:var(--accent-blue);animation-duration:23s;animation-delay:4s}.particle:nth-child(8){width:3px;height:3px;left:69%;background:var(--accent-purple);animation-duration:19s;animation-delay:1s}.particle:nth-child(9){width:2px;height:2px;left:78%;background:var(--accent-green);animation-duration:21s;animation-delay:6s}.particle:nth-child(10){width:3px;height:3px;left:85%;background:var(--accent-cyan);animation-duration:16s;animation-delay:3.5s}.particle:nth-child(11){width:4px;height:4px;left:92%;background:var(--accent-pink);animation-duration:24s;animation-delay:2s}.particle:nth-child(12){width:2px;height:2px;left:98%;background:var(--accent-orange);animation-duration:14s;animation-delay:7s}
+.top-nav{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-color);padding:12px 24px;display:flex;align-items:center;gap:16px}.top-nav a{font-size:14px;display:flex;align-items:center;gap:6px}.top-nav .title{font-size:18px;font-weight:700;background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-left:auto}
+.sidebar-toggle{display:none;position:fixed;bottom:24px;right:24px;z-index:200;width:48px;height:48px;border-radius:50%;background:var(--gradient-primary);border:none;color:#fff;font-size:22px;cursor:pointer;box-shadow:var(--glow-blue)}
+.layout{display:flex;max-width:1400px;margin:0 auto;position:relative;z-index:1}.sidebar{width:260px;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;padding:20px 16px;border-right:1px solid var(--border-color);flex-shrink:0;background:var(--bg-primary)}
+.sidebar a{display:block;padding:7px 12px;font-size:13px;color:var(--text-secondary);border-radius:var(--radius-sm);margin-bottom:2px;transition:var(--transition);border-left:2px solid transparent}.sidebar a:hover,.sidebar a.active{color:var(--accent-blue);background:rgba(88,166,255,.08);text-decoration:none;border-left-color:var(--accent-blue)}
+.main{flex:1;padding:0 40px 60px;min-width:0}.hero{text-align:center;padding:48px 0 36px;position:relative}.hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(88,166,255,.08) 0%,transparent 70%);pointer-events:none;animation:headerGlow 8s ease-in-out infinite}
+@keyframes headerGlow{0%,100%{opacity:.5;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.15)}} .hero-badge{display:inline-block;padding:4px 16px;border-radius:20px;font-size:13px;font-weight:600;background:rgba(88,166,255,.12);color:var(--accent-blue);border:1px solid rgba(88,166,255,.25);margin-bottom:16px}
+.hero h1{font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple),var(--accent-cyan));background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:gradientShift 6s ease-in-out infinite;line-height:1.3;margin-bottom:12px}@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.hero-sub{font-size:16px;color:var(--text-secondary);max-width:760px;margin:0 auto 24px;line-height:1.8}.hero-divider{width:80px;height:3px;background:var(--gradient-primary);margin:0 auto;border-radius:2px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:32px 0 40px}.stat-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;text-align:center;transition:var(--transition);position:relative;overflow:hidden}.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0;transition:opacity .3s}.stat-card:hover{transform:translateY(-4px);border-color:var(--border-highlight)}.stat-card:hover::before{opacity:1}.stat-card:nth-child(1)::before{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan))}.stat-card:nth-child(2)::before{background:linear-gradient(90deg,var(--accent-purple),var(--accent-pink))}.stat-card:nth-child(3)::before{background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan))}.stat-card:nth-child(4)::before{background:linear-gradient(90deg,var(--accent-orange),var(--accent-yellow))}.stat-value{font-size:28px;font-weight:800;margin-bottom:4px}.stat-card:nth-child(1) .stat-value{color:var(--accent-blue)}.stat-card:nth-child(2) .stat-value{color:var(--accent-purple)}.stat-card:nth-child(3) .stat-value{color:var(--accent-green)}.stat-card:nth-child(4) .stat-value{color:var(--accent-orange)}.stat-label{font-size:13px;color:var(--text-secondary)}
+.section{margin-bottom:48px} h2{font-size:24px;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid transparent;border-image:linear-gradient(90deg,var(--accent-blue),var(--accent-purple)) 1;display:flex;align-items:center;gap:10px} h2 .icon{font-size:28px} .section-intro{font-size:15px;color:var(--text-secondary);margin-bottom:20px;line-height:1.8}
+.card{background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;margin-bottom:16px;transition:var(--transition)}.card:hover{border-color:var(--accent-blue);transform:translateY(-2px);box-shadow:0 4px 20px rgba(88,166,255,.1)}.card h4{color:var(--accent-purple);margin-bottom:8px;font-size:16px}
+.code-block{background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;padding:16px;font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;overflow-x:auto;line-height:1.8;margin:12px 0}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;margin:2px}.badge-blue{background:rgba(88,166,255,.15);color:var(--accent-blue)}.badge-purple{background:rgba(188,140,255,.15);color:var(--accent-purple)}.badge-green{background:rgba(126,231,135,.15);color:var(--accent-green)}.badge-orange{background:rgba(240,136,62,.15);color:var(--accent-orange)}.badge-cyan{background:rgba(118,228,247,.15);color:var(--accent-cyan)}
+.compare-table{width:100%;border-collapse:collapse;margin:12px 0}.compare-table th,.compare-table td{padding:10px 14px;border:1px solid var(--border-color);text-align:left;font-size:14px;vertical-align:top}.compare-table th{background:var(--bg-tertiary);color:var(--accent-purple);font-weight:600}.compare-table td{background:var(--bg-secondary)}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.callout{border-left:3px solid var(--accent-blue);background:rgba(88,166,255,.06);padding:14px 16px;border-radius:0 10px 10px 0;margin:14px 0;color:var(--text-secondary)}.callout.warn{border-left-color:var(--accent-orange);background:rgba(240,136,62,.08)}.callout.safe{border-left-color:var(--accent-green);background:rgba(126,231,135,.08)} .mono{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace}
+.footer{text-align:center;padding:40px 20px;border-top:1px solid var(--border-color);margin-top:40px}.footer-back{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:var(--accent-blue);margin-bottom:8px}.footer-meta{font-size:13px;color:var(--text-muted);line-height:1.8;margin-top:12px}.footer-meta code{color:var(--accent-cyan);background:rgba(118,228,247,.08);padding:1px 6px;border-radius:4px;font-size:12px}
+ul{padding-left:20px} li{margin-bottom:6px;font-size:14px}
+@media (max-width:900px){.sidebar-toggle{display:block}.layout{flex-direction:column}.sidebar{width:100%;position:fixed;top:52px;left:-100%;height:calc(100vh - 52px);border-right:none;border-bottom:1px solid var(--border-color);z-index:150;transition:left .3s}.sidebar.open{left:0}.main{padding:0 16px 60px}.stats-grid{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}.hero h1{font-size:26px}}
+@media (max-width:560px){.stats-grid{grid-template-columns:1fr 1fr;gap:10px}.stat-value{font-size:22px}.top-nav .title{font-size:14px}}
+</style>
+</head>
+<body>
+<div class="particles"><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div></div>
+<nav class="top-nav"><a href="index.html">← 返回导航中心</a><span class="title">🕵️ 隐藏功能与未公开特性审计</span></nav>
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="切换目录">☰</button>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a href="#overview">1. 审计范围</a>
+    <a href="#buddy">2. Buddy 物种库</a>
+    <a href="#undercover">3. Undercover 模式</a>
+    <a href="#betas">4. Beta 标志注册表</a>
+    <a href="#providers">5. Provider 路由差异</a>
+    <a href="#env">6. 环境变量与内部开关</a>
+    <a href="#safety">7. 内外仓安全模式</a>
+    <a href="#conclusion">8. 架构结论</a>
+  </aside>
+  <main class="main">
+    <section class="hero">
+      <div class="hero-badge">Claude Code v2.1.88 · Hidden Features Audit</div>
+      <h1>🕵️ 隐藏功能与未公开特性审计</h1>
+      <p class="hero-sub">本报告聚焦 Claude Code 中默认 UI 不显眼、但在代码层真实存在的能力表面：Buddy 彩蛋体系、<span class="mono">undercover.ts</span> 的公开仓隐身策略、<span class="mono">betas.ts</span> 的 Beta 头注册表，以及它们如何通过环境变量、beta headers 与 internal/public repo 安全模式被 surfaced。</p>
+      <div class="hero-divider"></div>
+    </section>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value">18 种</div><div class="stat-label">Buddy 物种</div></div>
+      <div class="stat-card"><div class="stat-value">20 组</div><div class="stat-label">Beta 标志</div></div>
+      <div class="stat-card"><div class="stat-value">Auto / Force</div><div class="stat-label">Undercover 模式</div></div>
+      <div class="stat-card"><div class="stat-value">Env + Header</div><div class="stat-label">内部开关</div></div>
+    </div>
+
+    <section class="section" id="overview">
+      <h2><span class="icon">🧭</span>审计范围</h2>
+      <p class="section-intro">这里的“隐藏功能”并不等于后门，而是指只在特定 build、provider、环境变量或仓库分类条件下显现的能力。代码显示，Claude Code 至少存在三条稳定路径：UI 彩蛋对象、请求头级实验开关、以及针对公开仓的安全伪装层。</p>
+      <div class="card"><h4>能力暴露路径</h4><div class="code-block">UI / 彩蛋对象 → <span class="mono">buddy/types.ts</span><br>请求头 / 实验能力 → <span class="mono">constants/betas.ts</span> + <span class="mono">utils/betas.ts</span><br>公开仓安全模式 → <span class="mono">undercover.ts</span> + <span class="mono">commitAttribution.ts</span></div></div>
+      <div class="callout safe"><strong>边界：</strong>只依据给定源码事实与其调用关系做架构级分析，不延伸到未被代码支撑的低层实现细节。</div>
+    </section>
+
+    <section class="section" id="buddy">
+      <h2><span class="icon">🐣</span>Buddy 物种库</h2>
+      <p class="section-intro"><span class="mono">src/buddy/types.ts</span> 明确导出完整 species 列表，并统一用 <span class="mono">String.fromCharCode</span> 在运行时构造字面量。注释解释这是为了避免某个 species 名称直接撞上内部模型 codename canary。</p>
+      <div class="card"><h4>18 种 Buddy 物种（精确事实）</h4><div class="code-block">duck, goose, blob, cat, dragon, octopus, owl, penguin, turtle, snail, ghost, axolotl, capybara, cactus, robot, rabbit, mushroom, chonk</div></div>
+      <div class="grid-2">
+        <div class="card"><h4>为什么这不是普通装饰</h4><ul><li>同文件还定义 rarity、eye、hat、stats。</li><li>存在 <span class="mono">CompanionBones</span>、<span class="mono">CompanionSoul</span>、<span class="mono">StoredCompanion</span> 类型层。</li><li>说明其背后是完整 companion 子系统，而非单一彩蛋文案。</li></ul></div>
+        <div class="card"><h4>技术含义</h4><p style="font-size:14px;color:var(--text-secondary)">Buddy 名称被编码构造，暴露出另一个架构信号：构建系统对敏感字符串存在额外检测，而该模块刻意避免把相关字面量直接落进 bundle。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="undercover">
+      <h2><span class="icon">🥸</span>Undercover 模式</h2>
+      <p class="section-intro"><span class="mono">undercover.ts</span> 的目的非常明确：它会在公开/开源仓库贡献场景下，从 commit 或 PR 文案中剥离内部代号和项目名；而 <span class="mono">CLAUDE_CODE_UNDERCOVER=1</span> 可以强制开启。</p>
+      <div class="card">
+        <h4>用途与规则</h4>
+        <table class="compare-table">
+          <thead><tr><th>项目</th><th>代码事实</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>目的</td><td>strips internal codenames/project names from commits or PRs for public/open-source repositories</td><td>保护外发文本，不泄漏内部命名</td></tr>
+            <tr><td>强制开启</td><td><span class="mono">CLAUDE_CODE_UNDERCOVER=1</span></td><td>手动进入最保守模式</td></tr>
+            <tr><td>自动开启</td><td>repo class 不是 <span class="mono">internal</span> 时开启</td><td>默认“宁可误开，不可漏开”</td></tr>
+            <tr><td>关闭策略</td><td>注释明确写出没有 force-OFF</td><td>安全级别只能上调</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card"><h4>决策链</h4><div class="code-block"><span class="mono">USER_TYPE === 'ant'</span> build gate<br>→ <span class="mono">CLAUDE_CODE_UNDERCOVER</span> 环境变量强制开启<br>→ 否则检查 <span class="mono">getRepoClassCached()</span><br>→ 仅 <span class="mono">internal</span> 关闭，external / none / null 一律保持开启</div></div>
+      <div class="callout warn"><strong>关键点：</strong>这不是简单文本替换，而是提交与 PR 生成链前的策略层；而且采用安全默认 ON。</div>
+    </section>
+
+    <section class="section" id="betas">
+      <h2><span class="icon">🧪</span>Beta 标志注册表</h2>
+      <p class="section-intro"><span class="mono">src/constants/betas.ts</span> 提供 Claude Code 的隐藏能力目录。按用户要求，以下 20 组标识需完整覆盖：18 个 beta/header 常量 + 2 个 provider 约束集合。</p>
+      <div class="card"><h4>20 组精确名称</h4><div class="code-block">CLAUDE_CODE_20250219_BETA_HEADER
+INTERLEAVED_THINKING_BETA_HEADER
+CONTEXT_1M_BETA_HEADER
+CONTEXT_MANAGEMENT_BETA_HEADER
+STRUCTURED_OUTPUTS_BETA_HEADER
+WEB_SEARCH_BETA_HEADER
+TOOL_SEARCH_BETA_HEADER_1P
+TOOL_SEARCH_BETA_HEADER_3P
+EFFORT_BETA_HEADER
+TASK_BUDGETS_BETA_HEADER
+PROMPT_CACHING_SCOPE_BETA_HEADER
+FAST_MODE_BETA_HEADER
+REDACT_THINKING_BETA_HEADER
+TOKEN_EFFICIENT_TOOLS_BETA_HEADER
+SUMMARIZE_CONNECTOR_TEXT_BETA_HEADER
+AFK_MODE_BETA_HEADER
+CLI_INTERNAL_BETA_HEADER
+ADVISOR_BETA_HEADER
+BEDROCK_EXTRA_PARAMS_HEADERS
+VERTEX_COUNT_TOKENS_ALLOWED_BETAS</div></div>
+      <div class="grid-2">
+        <div class="card"><h4>从命名可确认的谱系</h4><ul><li>thinking / redact-thinking</li><li>context / 1M / context-management</li><li>structured outputs / tool search / token-efficient tools</li><li>web search / advisor / cli-internal</li></ul></div>
+        <div class="card"><h4>不要过度解读的部分</h4><p style="font-size:14px;color:var(--text-secondary)">常量名能证明“协议表面存在”，但不能单独证明全部功能在当前 build 都可用；真正激活还要经过 provider、model、env 与实验开关过滤。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="providers">
+      <h2><span class="icon">🌐</span>Provider 路由差异</h2>
+      <p class="section-intro">隐藏功能被 surfaced 的关键不只是常量文件，而是 <span class="mono">utils/betas.ts</span> 如何装配请求。Claude Code 会按 provider、model、session 模式和 env 条件决定哪些 betas 进入 headers，哪些改走 extra body params，哪些必须被过滤。</p>
+      <div class="card"><h4>路由逻辑</h4><div class="code-block"><span class="mono">getAllModelBetas(model)</span> 组装能力集合<br>→ Bedrock: <span class="mono">BEDROCK_EXTRA_PARAMS_HEADERS</span> 不走普通 headers<br>→ Vertex countTokens: 仅保留 <span class="mono">VERTEX_COUNT_TOKENS_ALLOWED_BETAS</span><br>→ Tool Search: 1P 用 <span class="mono">TOOL_SEARCH_BETA_HEADER_1P</span>，3P 用 <span class="mono">TOOL_SEARCH_BETA_HEADER_3P</span></div></div>
+      <div class="card"><h4>架构观察</h4><p style="font-size:14px;color:var(--text-secondary)">这说明隐藏功能不是前端单点开关，而是“环境变量/实验 → beta 集合 → provider 兼容过滤 → 最终 API 协议”的多级决策流水线。</p></div>
+    </section>
+
+    <section class="section" id="env">
+      <h2><span class="icon">🧰</span>环境变量与内部开关</h2>
+      <p class="section-intro">从架构层面看，Claude Code 的隐藏功能主要通过环境变量、beta headers、以及 internal/public repo safety modes 被 surfaced。三者分别扮演“意图输入层”“协议表达层”“外部披露限制层”。</p>
+      <div class="card"><h4>典型开关链</h4><div class="code-block">build gate: <span class="mono">USER_TYPE === 'ant'</span><br>env gate: <span class="mono">CLAUDE_CODE_UNDERCOVER</span>, <span class="mono">ANTHROPIC_BETAS</span>, <span class="mono">CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS</span><br>feature gate: <span class="mono">feature('CONNECTOR_TEXT')</span>, <span class="mono">feature('TRANSCRIPT_CLASSIFIER')</span><br>provider gate: <span class="mono">getAPIProvider()</span> + beta 过滤<br>public safety gate: repo class + undercover</div></div>
+      <div class="callout"><strong>结论：</strong>环境变量负责“想不想开”，beta header 负责“怎么告诉后端”，公开仓安全模式负责“即使功能存在，也不能把内部语义暴露出去”。</div>
+    </section>
+
+    <section class="section" id="safety">
+      <h2><span class="icon">🛡️</span>内外仓安全模式</h2>
+      <p class="section-intro"><span class="mono">commitAttribution.ts</span> 维护内部仓 allowlist；<span class="mono">undercover.ts</span> 则把这一分类上升为提交/PR 文案安全策略。组织内 public repo 依然可能被视作需要隐身，这一点在注释中写得非常清楚。</p>
+      <div class="card">
+        <h4>repo class 与保护行为</h4>
+        <table class="compare-table">
+          <thead><tr><th>repo class</th><th>来源</th><th>保护结果</th></tr></thead>
+          <tbody>
+            <tr><td>internal</td><td>remote 命中 allowlist</td><td>可关闭自动隐身</td></tr>
+            <tr><td>external</td><td>有 remote 但不在 allowlist</td><td>自动开启隐身</td></tr>
+            <tr><td>none</td><td>无 remote / 非 git</td><td>仍保持隐身</td></tr>
+            <tr><td>null</td><td>检查未完成</td><td>仍保持隐身</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><strong>真正的架构信号：</strong>Claude Code 不只管理 capability surface，还管理 disclosure surface。隐藏功能越多，外发文本约束就越重要。</div>
+    </section>
+
+    <section class="section" id="conclusion">
+      <h2><span class="icon">🧩</span>架构结论</h2>
+      <p class="section-intro">把 Buddy、Undercover 和 Beta 注册表放在一起看，Claude Code 的 hidden features 可以概括为三层：本地彩蛋对象层、协议头实验层、公开仓安全层。</p>
+      <div class="card"><h4>总结</h4><ul><li>Buddy species 精确包含：duck, goose, blob, cat, dragon, octopus, owl, penguin, turtle, snail, ghost, axolotl, capybara, cactus, robot, rabbit, mushroom, chonk。</li><li><span class="mono">undercover.ts</span> 用于在 public/open-source 仓贡献时剥离内部代号/项目名，<span class="mono">CLAUDE_CODE_UNDERCOVER=1</span> 可强制开启。</li><li><span class="mono">betas.ts</span> 暴露 20 组 beta/header 标识与集合，真正激活要经 provider 与 env 过滤。</li><li>隐藏功能的 surfaced 方式主要就是：环境变量、beta headers、内部/公开仓安全模式。</li></ul></div>
+    </section>
+
+    <footer class="footer">
+      <a href="index.html" class="footer-back">← 返回导航中心</a>
+      <div class="footer-meta">Claude Code <code>v2.1.88</code> · 隐藏功能与未公开特性审计<br>基于 <code>restored-src/src/buddy/types.ts</code>、<code>restored-src/src/utils/undercover.ts</code>、<code>restored-src/src/constants/betas.ts</code>、<code>restored-src/src/utils/betas.ts</code> 等静态分析整理</div>
+    </footer>
+  </main>
+</div>
+<script>
+(function(){var sections=document.querySelectorAll('.section');var sidebarLinks=document.querySelectorAll('.sidebar a');var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){sidebarLinks.forEach(function(l){l.classList.remove('active')});var link=document.querySelector('.sidebar a[href="#'+entry.target.id+'"]');if(link)link.classList.add('active')}})},{rootMargin:'-20% 0px -70% 0px'});sections.forEach(function(s){observer.observe(s)});sidebarLinks.forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();var target=document.querySelector(this.getAttribute('href'));if(target){target.scrollIntoView({behavior:'smooth',block:'start'})}var sidebar=document.getElementById('sidebar');if(sidebar)sidebar.classList.remove('open')})});var toggleBtn=document.getElementById('sidebarToggle');var sidebar=document.getElementById('sidebar');if(toggleBtn&&sidebar){toggleBtn.addEventListener('click',function(){sidebar.classList.toggle('open')})}})();
+</script>
+</body>
+</html>
