@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通用 Agent 设计模式与工程实践</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary); padding: 2px 7px; border-radius: 4px; font-size: 0.88em; color: var(--accent-cyan);
+}
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+.particle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+.particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--accent-blue); opacity: 0; animation: particleFloat linear infinite; }
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color); z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue); padding: 6px 14px; background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2); border-radius: 20px; transition: all var(--transition);
+}
+.top-nav .back-link:hover { background: rgba(88,166,255,0.15); border-color: var(--accent-blue); box-shadow: var(--glow-blue); }
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title { font-size: 0.9rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sidebar {
+  position: fixed; top: 56px; left: 0; width: var(--sidebar-width); height: calc(100vh - 56px);
+  background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50; padding: 24px 0; transform: translateX(0); transition: transform var(--transition);
+}
+.sidebar-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); padding: 0 20px; margin-bottom: 12px; }
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px; padding: 7px 20px; font-size: 0.82rem;
+  color: var(--text-secondary); border-left: 3px solid transparent; transition: all var(--transition);
+}
+.sidebar-nav a:hover { color: var(--text-primary); background: rgba(88,166,255,0.05); border-left-color: rgba(88,166,255,0.3); }
+.sidebar-nav a.active { color: var(--accent-blue); background: rgba(88,166,255,0.08); border-left-color: var(--accent-blue); font-weight: 600; }
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--bg-tertiary); font-size: 0.65rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.sidebar-toggle {
+  display: none; position: fixed; top: 62px; left: 12px; z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; align-items: center; justify-content: center;
+}
+
+.main-content { margin-left: var(--sidebar-width); margin-top: 56px; padding: 0; position: relative; z-index: 1; min-height: calc(100vh - 56px); }
+.container { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+.page-header { padding: 60px 0 40px; text-align: center; position: relative; overflow: hidden; }
+.page-header::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow { 0% { transform: translate(-5%, -5%) scale(1); } 100% { transform: translate(5%, 5%) scale(1.1); } }
+.page-header .badge {
+  display: inline-block; padding: 5px 14px; background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3); border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px; letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+  background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle { font-size: 1rem; color: var(--text-secondary); max-width: 700px; margin: 0 auto; }
+.header-line { width: 60px; height: 3px; background: var(--gradient-primary); margin: 24px auto 0; border-radius: 2px; }
+
+.content-section { padding: 56px 0 20px; scroll-margin-top: 80px; }
+.section-title { margin-bottom: 36px; }
+.section-title h2 { font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: var(--radius-sm); font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p { color: var(--text-secondary); font-size: 0.95rem; margin-left: 52px; }
+
+.fade-section { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.fade-section.visible { opacity: 1; transform: translateY(0); }
+
+/* Capability Cards */
+.cap-card {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px; position: relative; overflow: hidden; transition: all var(--transition);
+}
+.cap-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 4px 0 0 4px; }
+.cap-card:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.cap-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.cap-num {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.cap-title { font-size: 1.15rem; font-weight: 700; }
+.cap-subtitle { font-size: 0.82rem; color: var(--text-muted); }
+.cap-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.7; }
+.cap-arch {
+  background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 16px 20px; margin-bottom: 16px; overflow-x: auto;
+}
+.cap-arch pre { margin: 0; font-family: "SF Mono", "Fira Code", Consolas, monospace; font-size: 0.82rem; color: var(--accent-cyan); line-height: 1.6; white-space: pre; }
+.cap-decisions { list-style: none; margin-bottom: 16px; }
+.cap-decisions li {
+  display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 0.88rem; color: var(--text-secondary);
+  border-bottom: 1px solid rgba(48,54,61,0.3);
+}
+.cap-decisions li:last-child { border-bottom: none; }
+.cap-decisions .dec-icon { flex-shrink: 0; margin-top: 2px; color: var(--accent-green); }
+
+/* Solution highlight box */
+.solution-box {
+  background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.2); border-radius: var(--radius-md);
+  padding: 12px 18px; margin-bottom: 16px; font-size: 0.9rem; color: var(--text-primary); font-weight: 600;
+}
+.solution-box .sol-label { color: var(--accent-green); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+
+/* Tag badges for use cases */
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag {
+  display: inline-block; padding: 4px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600;
+  background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color);
+}
+
+/* Card color variants */
+.cap-blue::before { background: var(--accent-blue); }
+.cap-blue .cap-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.cap-blue:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+.cap-purple::before { background: var(--accent-purple); }
+.cap-purple .cap-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.cap-purple:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+.cap-green::before { background: var(--accent-green); }
+.cap-green .cap-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.cap-green:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+.cap-cyan::before { background: var(--accent-cyan); }
+.cap-cyan .cap-num { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+.cap-cyan:hover { box-shadow: 0 0 20px rgba(118,228,247,0.12); }
+.cap-orange::before { background: var(--accent-orange); }
+.cap-orange .cap-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.cap-orange:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+.cap-pink::before { background: var(--accent-pink); }
+.cap-pink .cap-num { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+.cap-pink:hover { box-shadow: 0 0 20px rgba(247,120,186,0.12); }
+.cap-yellow::before { background: var(--accent-yellow); }
+.cap-yellow .cap-num { background: rgba(245,213,71,0.15); color: var(--accent-yellow); }
+.cap-yellow:hover { box-shadow: 0 0 20px rgba(245,213,71,0.12); }
+.cap-red::before { background: var(--accent-red); }
+.cap-red .cap-num { background: rgba(255,123,114,0.15); color: var(--accent-red); }
+.cap-red:hover { box-shadow: 0 0 20px rgba(255,123,114,0.12); }
+
+/* 2x2 grid */
+.grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.mini-card {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 20px; transition: all var(--transition);
+}
+.mini-card:hover { border-color: var(--border-highlight); }
+.mini-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.mini-card table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.mini-card th { text-align: left; padding: 6px 8px; color: var(--accent-blue); border-bottom: 1px solid var(--border-color); font-weight: 600; }
+.mini-card td { padding: 6px 8px; color: var(--text-secondary); border-bottom: 1px solid rgba(48,54,61,0.3); }
+.mini-card td:first-child { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+
+/* Checklist */
+.checklist { list-style: none; }
+.checklist li {
+  display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; font-size: 0.9rem; color: var(--text-secondary);
+  border-bottom: 1px solid rgba(48,54,61,0.3);
+}
+.checklist li:last-child { border-bottom: none; }
+.check-icon { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(126,231,135,0.12); color: var(--accent-green); font-size: 0.75rem; margin-top: 1px; }
+.checklist strong { color: var(--text-primary); }
+
+/* Summary */
+.summary-box {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px;
+}
+.summary-text { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 20px; }
+
+/* Matrix table */
+.matrix-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-color); }
+.matrix-table thead th { padding: 14px 16px; font-size: 0.85rem; font-weight: 700; color: var(--accent-blue); background: var(--bg-secondary); border-bottom: 2px solid var(--border-color); text-align: left; }
+.matrix-table tbody tr { border-bottom: 1px solid rgba(48,54,61,0.5); transition: all var(--transition); }
+.matrix-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+.matrix-table tbody td { padding: 10px 14px; font-size: 0.84rem; color: var(--text-secondary); vertical-align: middle; }
+
+.footer { padding: 48px 0; text-align: center; border-top: 1px solid var(--border-color); margin-top: 40px; }
+.footer p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px; }
+.footer .footer-brand { font-weight: 600; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .cap-card-head { flex-wrap: wrap; }
+  .grid-2x2 { grid-template-columns: 1fr; }
+  .top-nav .page-title { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="particle-bg" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l4-4m-4 4l4 4"/></svg>
+    返回目录
+  </a>
+  <span class="page-title">通用 Agent 设计模式与工程实践 — Claude Code 源码提炼</span>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-overview"><span class="toc-num">全</span>设计模式全景</a></li>
+    <li><a href="#p1"><span class="toc-num">1</span>AsyncGenerator流式管道</a></li>
+    <li><a href="#p2"><span class="toc-num">2</span>QueryEngine会话引擎</a></li>
+    <li><a href="#p3"><span class="toc-num">3</span>工具抽象与注册</a></li>
+    <li><a href="#p4"><span class="toc-num">4</span>层次化权限决策链</a></li>
+    <li><a href="#p5"><span class="toc-num">5</span>递归嵌套Agent</a></li>
+    <li><a href="#p6"><span class="toc-num">6</span>多模式执行引擎</a></li>
+    <li><a href="#p7"><span class="toc-num">7</span>上下文窗口管理</a></li>
+    <li><a href="#p8"><span class="toc-num">8</span>Agent记忆与学习</a></li>
+    <li><a href="#p9"><span class="toc-num">9</span>推测性执行</a></li>
+    <li><a href="#p10"><span class="toc-num">10</span>配置即策略</a></li>
+    <li><a href="#sec-practice"><span class="toc-num">工</span>工程实践总结</a></li>
+    <li><a href="#sec-checklist"><span class="toc-num">✓</span>最佳实践清单</a></li>
+    <li><a href="#sec-summary"><span class="toc-num">结</span>总结</a></li>
+  </ul>
+</aside>
+
+<main class="main-content">
+
+  <header class="page-header">
+    <div class="container">
+      <div class="badge">AGENT DESIGN PATTERNS</div>
+      <h1>🏗️ 通用 Agent 设计模式与工程实践</h1>
+      <p class="subtitle">从 Claude Code 源码中提炼的 10 大 Agent 设计模式，可直接应用于任何 AI Agent 系统的设计与开发</p>
+      <div class="header-line"></div>
+    </div>
+  </header>
+
+  <!-- ========== 设计模式全景 ========== -->
+  <section class="content-section fade-section" id="sec-overview">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🗺️</span>设计模式全景</h2>
+        <p>经过生产验证的 Agent 设计模式体系，构建复杂 AI Agent 系统的通用方法论</p>
+      </div>
+      <div class="cap-arch"><pre>
+10 大设计模式
+├── 模式 1：AsyncGenerator 流式管道模式      ← 通信基础
+├── 模式 2：QueryEngine 会话引擎模式         ← 引擎核心
+├── 模式 3：工具抽象与注册模式               ← 能力层
+├── 模式 4：层次化权限决策链模式             ← 安全层
+├── 模式 5：递归嵌套 Agent 模式              ← 协作层
+├── 模式 6：多模式执行引擎模式               ← 部署层
+├── 模式 7：上下文窗口智能管理模式           ← 效率层
+├── 模式 8：Agent 记忆与学习模式             ← 知识层
+├── 模式 9：推测性执行模式                   ← 体验层
+└── 模式 10：配置即策略模式                  ← 架构层</pre></div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 1 ========== -->
+  <section class="content-section fade-section" id="p1">
+    <div class="container">
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <span class="cap-num">1</span>
+          <span class="cap-title">AsyncGenerator 流式管道模式</span>
+          <span class="cap-subtitle">统一通信协议</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>AI Agent 需要处理流式响应、支持取消、管理背压，传统的回调或 Promise 模式难以优雅处理。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          使用 AsyncGenerator 作为所有层间通信的统一协议
+        </div>
+        <div class="cap-arch"><pre>User Layer          Query Layer           API Layer
+    │                   │                    │
+    │  for await ──→    │  for await ──→     │
+    │  (messages)       │  (responses)       │  API Stream
+    │                   │                    │
+    │  ◄── yield        │  ◄── yield         │
+    │     message       │     response       │
+    │                   │                    │
+    │  abort ──────→    │  abort ──────→     │
+    │  (cancel)         │  (cancel)          │  Cancel</pre></div>
+        <div class="cap-arch"><pre>// 核心模式：三层嵌套的 AsyncGenerator
+async function* submitMessage(prompt: string): AsyncGenerator&lt;Message&gt; {
+  const context = prepareContext(prompt);
+  yield* queryLoop(context);    // yield* 优雅传播
+  await cleanup();
+}
+
+async function* queryLoop(context: QueryContext): AsyncGenerator&lt;Message&gt; {
+  while (true) {
+    for await (const chunk of apiStream(context)) {
+      if (chunk.type === 'tool_use') {
+        yield* executeToolAndYield(chunk);
+      } else {
+        yield chunk;   // 直接传播给上层
+      }
+    }
+    if (shouldStop(context)) break;
+  }
+}</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>背压控制</strong>：原生支持，消费者按需拉取，无需额外缓冲区管理</li>
+          <li><span class="dec-icon">✦</span><strong>取消支持</strong>：通过 AbortController + return() 传播取消信号</li>
+          <li><span class="dec-icon">✦</span><strong>嵌套组合</strong>：yield* 优雅组合，避免回调地狱</li>
+          <li><span class="dec-icon">✦</span><strong>类型安全</strong>：TypeScript 泛型确保消息类型在管道中正确传播</li>
+          <li><span class="dec-icon">✦</span><strong>懒求值</strong>：按需生成，不会提前计算不需要的结果</li>
+          <li><span class="dec-icon">✦</span><strong>调试友好</strong>：完整的栈追踪，优于回调/Observable 方案</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">AI 对话流</span><span class="tag">实时数据管道</span><span class="tag">多步骤工作流</span><span class="tag">流式 API 网关</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 2 ========== -->
+  <section class="content-section fade-section" id="p2">
+    <div class="container">
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <span class="cap-num">2</span>
+          <span class="cap-title">QueryEngine 会话引擎模式</span>
+          <span class="cap-subtitle">每 Agent 一个实例</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>AI Agent 需要管理会话状态、支持多种执行模式，且每个 Agent 实例需要独立的状态空间。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          每个 Agent = 一个 QueryEngine 实例，通过配置注入而非继承来支持多种模式
+        </div>
+        <div class="cap-arch"><pre>QueryEngine 实例（每 Agent 一个）
+├── 不可变配置
+│   ├── model: 模型选择
+│   ├── tools: 工具集（经过权限过滤）
+│   ├── systemPrompt: 系统 Prompt
+│   ├── maxTurns: 最大轮次
+│   └── canUseTool: 权限判断函数
+├── 可变状态
+│   ├── messages: 消息历史
+│   ├── fileCache: 文件缓存（COW）
+│   ├── totalUsage: Token 使用量
+│   └── permissionDenials: 权限拒绝记录
+└── 生命周期
+    ├── submitMessage(): 七阶段处理
+    ├── abort(): 取消当前查询
+    └── dispose(): 释放资源</pre></div>
+        <div class="cap-arch"><pre>七阶段处理生命周期：
+1. Construct    → 创建 AbortController、初始化文件缓存
+2. Initialize   → 权限包装、系统 Prompt 组装
+3. Shortcut     → 斜杠命令短路（跳过 API）
+4. Snapshot     → Git 快照（记录文件状态）
+5. Query Loop   → 核心消息泵（API 调用 + 工具执行循环）
+6. Validate     → 结果校验（结构化输出、成功条件）
+7. Cleanup      → 使用量统计、记忆提取、会话刷新</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>配置注入而非继承</strong>：不需要 CLIQueryEngine、SDKQueryEngine 等子类</li>
+          <li><span class="dec-icon">✦</span><strong>COW 文件缓存</strong>：Agent Fork 时共享缓存，修改时拷贝</li>
+          <li><span class="dec-icon">✦</span><strong>七阶段明确分离</strong>：每个阶段职责清晰，便于扩展和调试</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">多 Agent 会话管理</span><span class="tag">多执行模式 AI 应用</span><span class="tag">精细状态对话系统</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 3 ========== -->
+  <section class="content-section fade-section" id="p3">
+    <div class="container">
+      <div class="cap-card cap-green">
+        <div class="cap-card-head">
+          <span class="cap-num">3</span>
+          <span class="cap-title">工具抽象与注册模式</span>
+          <span class="cap-subtitle">统一 Tool 接口 + Zod 校验</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>Agent 需要调用多种工具（文件操作、API 调用、Shell 执行等），需要统一的抽象来管理工具的发现、校验、执行和权限。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          统一的 Tool 接口 + Zod Schema 校验 + 动态注册
+        </div>
+        <div class="cap-arch"><pre>// 统一工具接口
+interface Tool&lt;TInput, TOutput&gt; {
+  name: string;
+  description: string | (() =&gt; string);   // 支持动态描述
+  inputSchema: ZodSchema&lt;TInput&gt;;         // Zod 运行时校验
+  call(input: TInput, context: ToolContext): Promise&lt;TOutput&gt;;
+  checkPermissions?(input: TInput): PermissionResult;
+  isConcurrencySafe: boolean;             // 默认 false（fail-closed）
+  isEnabled?(context: AppState): boolean;
+  userFacingName?(): string;
+}</pre></div>
+        <div class="cap-arch"><pre>工具集聚合
+├── 内置工具（编译时注册，40+）
+├── MCP 工具（运行时发现，动态 Schema 翻译）
+├── Skill 工具（运行时加载，零代码定义）
+├── Plugin 工具（进程内，深度集成）
+└── Feature Gate 工具（编译时裁剪）
+
+流式工具执行器（StreamingToolExecutor）
+├── 工具调用入队（流式收集参数）
+├── 权限预检（与 API 流并行）
+├── 并发安全工具 → 并行执行
+├── 非并发安全工具 → 串行执行
+└── 结果收集 → ToolResultBlock</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>Fail-Closed 默认</strong>：新工具默认非并发安全（串行），显式声明安全才并行</li>
+          <li><span class="dec-icon">✦</span><strong>Zod 运行时校验</strong>：防止 AI 生成的错误参数到达工具逻辑</li>
+          <li><span class="dec-icon">✦</span><strong>动态描述</strong>：工具描述可根据上下文变化（如当前文件类型）</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">多工具 Agent</span><span class="tag">插件化架构</span><span class="tag">自动化系统</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 4 ========== -->
+  <section class="content-section fade-section" id="p4">
+    <div class="container">
+      <div class="cap-card cap-cyan">
+        <div class="cap-card-head">
+          <span class="cap-num">4</span>
+          <span class="cap-title">层次化权限决策链模式</span>
+          <span class="cap-subtitle">七层从粗到细</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>AI Agent 操作涉及安全敏感操作（文件修改、命令执行、数据访问），需要灵活且安全的权限控制。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          七层权限决策管道，从粗到细、从快到慢
+        </div>
+        <div class="cap-arch"><pre>工具调用请求
+  │
+  ├─ Layer 0: 工具池过滤（该工具是否可用？）
+  ├─ Layer 1: 输入校验（参数是否合法？）
+  ├─ Layer 2: 权限模式快速路径
+  │   ├── bypass → 允许 │ dontAsk → 拒绝
+  ├─ Layer 3: 工具级权限检查
+  │   └── tool.checkPermissions(input)
+  ├─ Layer 4: 规则引擎匹配
+  │   ├── policy（组织策略）→ 最高优先级
+  │   ├── user / project / local / flag
+  │   └── session → 最低优先级
+  ├─ Layer 5: PreToolUse Hooks（外部脚本）
+  ├─ Layer 6: AI 安全分类器（Bash 两阶段竞速）
+  └─ Layer 7: 用户交互确认</pre></div>
+        <div class="cap-arch"><pre>// 规则 DSL 设计
+interface PermissionRule {
+  tool: string;            // 工具名称（支持通配符）
+  action: 'allow' | 'deny' | 'ask';
+  pattern?: string;        // 参数匹配模式
+  scope: 'policy' | 'user' | 'project' | 'local' | 'flag' | 'session';
+  priority: number;
+  metadata?: { reason: string; expiry?: Date; };
+}</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>决策可追溯</strong>：每个权限决策都记录来源，支持事后审计</li>
+          <li><span class="dec-icon">✦</span><strong>两阶段检测</strong>：静态正则（快速）→ AI 分类器（精确）</li>
+          <li><span class="dec-icon">✦</span><strong>竞速优化</strong>：分类器与 UI 并行运行</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">企业 AI 安全治理</span><span class="tag">多租户权限管理</span><span class="tag">DevOps 安全控制</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 5 ========== -->
+  <section class="content-section fade-section" id="p5">
+    <div class="container">
+      <div class="cap-card cap-orange">
+        <div class="cap-card-head">
+          <span class="cap-num">5</span>
+          <span class="cap-title">递归嵌套 Agent 模式</span>
+          <span class="cap-subtitle">无限嵌套 + 预算控制</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>复杂任务需要分解为子任务，由专业化的子 Agent 处理，且子任务可能进一步分解。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          支持无限嵌套的 Agent 递归模型，通过预算和工具池控制安全边界
+        </div>
+        <div class="cap-arch"><pre>Main Agent（用户交互）
+  ├── Research Agent（信息收集）
+  │   ├── CodeSearch Agent（代码搜索）
+  │   └── DocSearch Agent（文档搜索）
+  ├── Implementation Agent（实现）
+  │   ├── Frontend Agent（前端实现）
+  │   └── Backend Agent（后端实现）
+  │       └── DB Agent（数据库变更）
+  └── Review Agent（审查）
+      ├── Security Agent（安全审查）
+      └── Performance Agent（性能审查）</pre></div>
+        <div class="cap-arch"><pre>资源预算：
+├── Token Budget：子 Agent ≤ 父 Agent 剩余预算
+├── USD Budget：全局美元预算上限
+├── Max Turns：每个 Agent 的最大轮次数
+└── Time Budget：超时自动终止
+
+工具池控制：
+├── 继承模式：子 Agent 继承父 Agent 的工具子集
+├── 排除模式：可排除 AgentTool 防止无限递归
+├── 限制模式：轻量级 Agent 只有只读工具
+└── 定制模式：YAML 定义精确的工具白名单
+
+Fork 优化：
+├── 父消息历史共享前缀 → Prompt Cache 命中
+└── 所有 Fork 子 Agent 共享缓存 → 单次 Cache Miss</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>权限只严不松</strong>：子 Agent 权限 ≤ 父 Agent 权限</li>
+          <li><span class="dec-icon">✦</span><strong>dontAsk 模式</strong>：防止子 Agent 弹出交互提示</li>
+          <li><span class="dec-icon">✦</span><strong>COW 文件缓存</strong>：Fork 时共享，修改时拷贝</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">复杂任务分解</span><span class="tag">多专家协作</span><span class="tag">递归搜索分析</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 6 ========== -->
+  <section class="content-section fade-section" id="p6">
+    <div class="container">
+      <div class="cap-card cap-pink">
+        <div class="cap-card-head">
+          <span class="cap-num">6</span>
+          <span class="cap-title">多模式执行引擎模式</span>
+          <span class="cap-subtitle">8 种模式 · 1 个引擎</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>同一个 Agent 引擎需要支持多种执行模式（交互式、批处理、远程、协作），但不希望代码路径爆炸。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          通过配置注入实现 8 种模式，底层共用同一个 QueryEngine
+        </div>
+        <div style="overflow-x:auto; margin-bottom:16px;">
+        <table class="matrix-table">
+          <thead><tr><th>模式</th><th>配置差异</th><th>适用场景</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--text-primary);font-weight:600;">CLI Interactive</td><td>标准工具集 + 用户审批</td><td>日常交互</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">Non-Interactive</td><td>输出到 stdout + 自动审批</td><td>脚本集成</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">SDK Programmatic</td><td>API 输出 + 编程控制</td><td>应用嵌入</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">Bridge Remote</td><td>远程协议 + 代理认证</td><td>云端控制</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">Coordinator</td><td>完整工具 + Agent 编排</td><td>多 Agent 协作</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">Daemon</td><td>后台运行 + Cron 触发</td><td>定时任务</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">KAIROS</td><td>语义理解 + 助手工具</td><td>个人助理</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">Voice</td><td>语音输入 + 语音输出</td><td>语音交互</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="cap-arch"><pre>// 不需要继承层次 — 只需配置对象
+const engineConfig = {
+  model: selectModel(mode),
+  tools: assembleTools(mode, permissions),
+  canUseTool: createPermissionChecker(mode),
+  getAppState: mode === 'sdk' ? sdkStateGetter : reactStateGetter,
+  maxTurns: mode === 'daemon' ? 10 : Infinity,
+  bare: mode === 'print',
+  onMessage: mode === 'bridge' ? bridgeRelay : terminalRender,
+};
+
+const engine = new QueryEngine(engineConfig); // 同一个引擎</pre></div>
+        <div class="tag-row">
+          <span class="tag">多渠道 AI 服务</span><span class="tag">多产品线共享引擎</span><span class="tag">灵活部署模式</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 7 ========== -->
+  <section class="content-section fade-section" id="p7">
+    <div class="container">
+      <div class="cap-card cap-yellow">
+        <div class="cap-card-head">
+          <span class="cap-num">7</span>
+          <span class="cap-title">上下文窗口智能管理模式</span>
+          <span class="cap-subtitle">五层递进压缩 + 缓存感知</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>AI 模型上下文窗口有限，长对话和大量工具结果会耗尽窗口，但简单截断会丢失关键信息。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          五层递进压缩 + 缓存感知策略
+        </div>
+        <div class="cap-arch"><pre>原始上下文 [500K tokens]
+  │
+  ├─ Layer 1: 工具结果预算
+  │  └── 单次工具输出超 50K → 截断至摘要        → [350K]
+  │
+  ├─ Layer 2: 历史裁剪
+  │  └── 老对话 → AI 生成摘要替代                → [200K]
+  │
+  ├─ Layer 3: 微压缩（按工具类型独立策略）
+  │  │   FILE_READ: 保留文件名 + 关键行
+  │  │   Bash: 保留命令 + 退出码 + 最后 N 行
+  │  │   Search: 保留 Top K 结果
+  │  └── 缓存感知：避免修改缓存前缀！            → [120K]
+  │
+  ├─ Layer 4: 上下文折叠
+  │  └── 归档旧内容，读取时投影                  → [100K]
+  │
+  └─ Layer 5: 自动压缩（最后手段）
+     └── AI 驱动完整对话重写 + 熔断机制           → [80K]</pre></div>
+        <div class="cap-arch"><pre>缓存感知的关键意义：
+├── API 缓存前 N 个 Token（系统 Prompt + 历史前缀）
+├── 后续请求前缀不变 → Cache Hit（便宜 90%）
+├── 前缀变了 → Cache Miss（全价重算）
+└── 因此压缩时必须保护前缀不变！
+
+微压缩策略：
+├── 只压缩缓存窗口之后的内容
+├── Fork 子 Agent 共享相同前缀 → 单次 Miss
+└── snipTokensFreed 精确传递释放量</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>缓存感知压缩</strong>：避免修改缓存前缀，确保 Prompt Cache 不失效</li>
+          <li><span class="dec-icon">✦</span><strong>熔断机制</strong>：连续 3 次自动压缩失败后停止尝试</li>
+          <li><span class="dec-icon">✦</span><strong>压缩后恢复</strong>：重新注入 Top 5 文件 + Skills 内容</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">长对话 AI</span><span class="tag">大上下文分析</span><span class="tag">成本优化</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 8 ========== -->
+  <section class="content-section fade-section" id="p8">
+    <div class="container">
+      <div class="cap-card cap-red">
+        <div class="cap-card-head">
+          <span class="cap-num">8</span>
+          <span class="cap-title">Agent 记忆与学习模式</span>
+          <span class="cap-subtitle">三层记忆 + Dream 巩固</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>AI Agent 每次对话都从零开始，无法积累经验和知识，团队知识无法在 Agent 间共享。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          三层记忆架构 + Dream 巩固机制 + 团队同步
+        </div>
+        <div class="cap-arch"><pre>长期记忆（跨会话持久化）
+├── 用户级 ~/.claude/agent-memory/
+├── 项目级 .claude/agent-memory/
+└── 本地级 .claude/local-agent-memory/
+
+中期记忆（项目级配置）
+├── CLAUDE.md（根目录） → 项目规范、编码约定
+├── 嵌套 CLAUDE.md      → 模块特定约定
+└── 团队记忆（远程同步） → 团队共享知识
+
+短期记忆（会话内）
+├── 消息历史、文件缓存（COW）、权限决策缓存</pre></div>
+        <div class="cap-arch"><pre>Dream 巩固机制：
+会话结束 → DreamTask 触发
+├─ Gate 1: 时间间隔检查（距上次 Dream &gt; N 小时？）
+├─ Gate 2: 会话数量检查（累积会话 &gt; N 次？）
+├─ Gate 3: 文件锁检查（无其他 Dream 在运行？）
+└─ 通过所有 Gate：
+   ├── Fork 子 Agent 分析会话 → 提取洞察 → 写入长期记忆
+   └── 冲突检测 + 后台静默完成
+
+团队记忆同步：
+├── Pull: 服务端优先 │ Push: 内容哈希增量同步
+├── 安全: 秘密扫描（上传前检测凭证）
+└── 约束: 250KB 上限 / 本地删除不传播</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>三层分离</strong>：长期/中期/短期记忆各司其职</li>
+          <li><span class="dec-icon">✦</span><strong>Dream 后台巩固</strong>：不影响用户交互的知识提取</li>
+          <li><span class="dec-icon">✦</span><strong>安全上传</strong>：秘密扫描防止凭证泄露</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">跨会话学习</span><span class="tag">团队知识共享</span><span class="tag">持久化 Agent</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 9 ========== -->
+  <section class="content-section fade-section" id="p9">
+    <div class="container">
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <span class="cap-num">9</span>
+          <span class="cap-title">推测性执行模式</span>
+          <span class="cap-subtitle">预测 → 匹配 → 合并</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>AI Agent 的响应存在延迟，用户等待时间影响体验。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          在用户空闲时 Fork Agent 预测下一步操作，匹配则合并，不匹配则丢弃
+        </div>
+        <div class="cap-arch"><pre>主线程                     推测线程
+  │                          │
+  ├─ AI 响应完成              │
+  │                          │
+  ├─ 用户阅读中... ──────→   Fork Agent 启动
+  │                          ├─ 预测下一步操作
+  │                          ├─ 执行操作
+  │                          └─ 写入 Overlay FS
+  │                          
+  ├─ 用户输入 ─────────→    匹配检查
+  │                          ├─ 匹配 → 合并 Overlay（零拷贝）
+  │                          └─ 不匹配 → 丢弃 Overlay
+  │
+  └─ 继续处理
+
+安全边界（自动停止）：
+├── Bash 命令（副作用不可逆）
+├── Edit/Write（需确认）
+├── 权限拒绝 │ 网络请求
+└── 自然完成</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>可预测工作流</strong>：~40% 感知延迟降低</li>
+          <li><span class="dec-icon">✦</span><strong>不可预测工作流</strong>：~0% 改善（仅消耗少量计算）</li>
+          <li><span class="dec-icon">✦</span><strong>平均效果</strong>：~20% 感知延迟降低</li>
+        </ul>
+        <div class="tag-row">
+          <span class="tag">编码助手预测</span><span class="tag">智能客服预准备</span><span class="tag">数据分析预加载</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 模式 10 ========== -->
+  <section class="content-section fade-section" id="p10">
+    <div class="container">
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <span class="cap-num">10</span>
+          <span class="cap-title">配置即策略模式</span>
+          <span class="cap-subtitle">Config as Strategy</span>
+        </div>
+        <p class="cap-desc"><strong style="color:var(--accent-orange);">问题：</strong>Agent 系统需要支持多种行为模式（调试、安全、快速等），传统的继承或策略模式导致代码爆炸。</p>
+        <div class="solution-box">
+          <div class="sol-label">💡 方案</div>
+          一个核心引擎 + 配置对象决定全部行为，无需子类或策略接口
+        </div>
+        <div class="cap-arch"><pre>// 传统方式：N 种模式 = N 个子类
+class CLIAgent extends BaseAgent { ... }
+class SDKAgent extends BaseAgent { ... }
+// 模式组合爆炸：CLI+Debug, SDK+Safe...
+
+// Claude Code 方式：一个配置对象
+interface AgentConfig {
+  model: ModelConfig;
+  tools: Tool[];
+  canUseTool: PermissionChecker;
+  maxTurns: number;
+  bare: boolean;
+  getAppState: () =&gt; AppState;
+  setAppState: (state: AppState) =&gt; void;
+  onMessage: MessageHandler;
+  systemPrompt: string;
+  // ... 20+ 配置项
+}
+const engine = new QueryEngine(config); // 同一个引擎</pre></div>
+        <div style="overflow-x:auto; margin-bottom:16px;">
+        <table class="matrix-table">
+          <thead><tr><th>维度</th><th>继承层次</th><th>策略模式</th><th>配置即策略</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--text-primary);font-weight:600;">代码重复</td><td>高（方法覆盖）</td><td>中（接口实现）</td><td style="color:var(--accent-green);">低（配置变化）</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">组合爆炸</td><td>高（NxM子类）</td><td>中（NxM策略）</td><td style="color:var(--accent-green);">低（配置组合）</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">运行时灵活</td><td>低（编译时绑定）</td><td>中（构造时注入）</td><td style="color:var(--accent-green);">高（随时修改）</td></tr>
+            <tr><td style="color:var(--text-primary);font-weight:600;">理解难度</td><td>高（继承链）</td><td>中（多接口）</td><td style="color:var(--accent-green);">低（单配置对象）</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="cap-arch"><pre>与 Coordinator 的结合：
+普通 Agent  = QueryEngine + 标准配置
+Coordinator = QueryEngine + Coordinator系统Prompt
+Worker      = QueryEngine + 受限工具集 + dontAsk权限
+
+零代码路径差异！仅系统 Prompt 不同。</pre></div>
+        <div class="tag-row">
+          <span class="tag">多模式 Agent</span><span class="tag">多租户 AI 服务</span><span class="tag">运行时行为调整</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 工程实践总结 ========== -->
+  <section class="content-section fade-section" id="sec-practice">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">⚙️</span>工程实践总结</h2>
+        <p>四个维度的最佳实践：架构 · 性能 · 安全 · 可扩展性</p>
+      </div>
+      <div class="grid-2x2">
+        <div class="mini-card">
+          <h3>🏗️ 架构级实践</h3>
+          <table>
+            <tr><th>实践</th><th>说明</th></tr>
+            <tr><td>AsyncGenerator 统一通信</td><td>所有层间通信用同一协议</td></tr>
+            <tr><td>配置即策略</td><td>用配置而非继承支持多模式</td></tr>
+            <tr><td>Fail-Closed 默认</td><td>安全相关默认走最严格路径</td></tr>
+            <tr><td>COW 状态共享</td><td>Fork 时共享，修改时拷贝</td></tr>
+            <tr><td>水位线错误隔离</td><td>对象引用作为循环缓冲区标记</td></tr>
+          </table>
+        </div>
+        <div class="mini-card">
+          <h3>⚡ 性能优化实践</h3>
+          <table>
+            <tr><th>实践</th><th>效果</th></tr>
+            <tr><td>Prompt Cache 稳定性</td><td>避免 90% 的缓存 Miss</td></tr>
+            <tr><td>推测性执行</td><td>~40% 延迟降低</td></tr>
+            <tr><td>懒加载</td><td>减少启动开销</td></tr>
+            <tr><td>并行初始化</td><td>减少启动时间</td></tr>
+            <tr><td>流式工具执行</td><td>权限检查与 API 流并行</td></tr>
+          </table>
+        </div>
+        <div class="mini-card">
+          <h3>🔐 安全实践</h3>
+          <table>
+            <tr><th>实践</th><th>说明</th></tr>
+            <tr><td>七层权限决策</td><td>从粗到细的安全过滤</td></tr>
+            <tr><td>两阶段命令检测</td><td>快速预筛 + 精确判断</td></tr>
+            <tr><td>决策可追溯</td><td>记录每次权限决策来源</td></tr>
+            <tr><td>权限只严不松</td><td>子 Agent 不能超越父 Agent</td></tr>
+            <tr><td>熔断保护</td><td>连续失败后停止尝试</td></tr>
+          </table>
+        </div>
+        <div class="mini-card">
+          <h3>🔌 可扩展性实践</h3>
+          <table>
+            <tr><th>实践</th><th>说明</th></tr>
+            <tr><td>MCP 协议标准化</td><td>统一工具集成协议</td></tr>
+            <tr><td>Skill 零代码扩展</td><td>纯 Markdown 定义能力</td></tr>
+            <tr><td>Plugin 深度集成</td><td>进程内代码扩展</td></tr>
+            <tr><td>Feature Gate 裁剪</td><td>编译时产品线分离</td></tr>
+            <tr><td>YAML Agent 定义</td><td>声明式 Agent 配置</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 最佳实践检查清单 ========== -->
+  <section class="content-section fade-section" id="sec-checklist">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">✅</span>最佳实践检查清单</h2>
+        <p>设计新 Agent 系统时的参考清单</p>
+      </div>
+      <div class="summary-box">
+        <ul class="checklist">
+          <li><span class="check-icon">✓</span><div><strong>通信模式</strong>：是否使用了 AsyncGenerator 或类似的流式管道？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>会话管理</strong>：每个 Agent 是否有独立的状态空间？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>工具抽象</strong>：是否有统一的工具接口和 Schema 校验？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>权限控制</strong>：是否有层次化的权限决策链？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>嵌套支持</strong>：是否支持 Agent 递归调用和预算控制？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>多模式支持</strong>：是否通过配置而非继承支持多种模式？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>上下文管理</strong>：是否有递进式的上下文压缩策略？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>记忆系统</strong>：是否支持跨会话的学习和知识积累？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>性能优化</strong>：是否利用了缓存、推测执行、懒加载？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>安全默认</strong>：是否遵循 Fail-Closed 原则？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>可扩展性</strong>：是否支持标准化的工具/能力扩展？</div></li>
+          <li><span class="check-icon">✓</span><div><strong>可观测性</strong>：是否有完善的追踪、计量和审计？</div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 总结 ========== -->
+  <section class="content-section fade-section" id="sec-summary">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">✨</span>总结</h2>
+        <p>10 大设计模式构成完整的 Agent 系统设计方法论</p>
+      </div>
+      <div class="summary-box">
+        <p class="summary-text">Claude Code 的 10 大设计模式构成了一个<strong style="color:var(--accent-blue);">完整的 Agent 系统设计方法论</strong>。这些模式不是孤立的，而是相互支撑、协同工作的。掌握这套方法论，就能设计出<strong style="color:var(--accent-green);">安全、高效、可扩展</strong>的 AI Agent 系统。</p>
+        <div class="cap-arch"><pre>AsyncGenerator（通信基础）
+  ↓
+QueryEngine（引擎核心）→ 配置即策略（多模式）
+  ↓
+工具抽象（能力层）→ MCP/Skill/Plugin（扩展）
+  ↓
+权限决策链（安全层）→ Bash分类器（AI判断）
+  ↓
+递归嵌套Agent（协作层）→ Coordinator（编排）
+  ↓
+上下文管理（效率层）→ 缓存感知压缩
+  ↓
+记忆系统（知识层）→ Dream巩固 + 团队同步
+  ↓
+推测性执行（体验层）→ Overlay合并</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p><span class="footer-brand">Claude Code 源码分析</span></p>
+      <p>通用 Agent 设计模式与工程实践 · 10 大生产验证的设计模式</p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+(function() {
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
+    document.addEventListener('click', function(e) {
+      if (window.innerWidth <= 1024 && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== toggle) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+
+  function initTocHighlight() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    var sections = [];
+    tocLinks.forEach(function(link) {
+      var id = link.getAttribute('href').replace('#', '');
+      var el = document.getElementById(id);
+      if (el) sections.push({ el: el, link: link });
+    });
+    function updateActive() {
+      var scrollY = window.scrollY + 120;
+      var current = null;
+      sections.forEach(function(s) { if (s.el.offsetTop <= scrollY) current = s; });
+      tocLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) { requestAnimationFrame(function() { updateActive(); ticking = false; }); ticking = true; }
+    });
+    updateActive();
+  }
+
+  function initScrollObserver() {
+    var sections = document.querySelectorAll('.fade-section');
+    if (!('IntersectionObserver' in window)) { sections.forEach(function(s) { s.classList.add('visible'); }); return; }
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  function initSidebarLinks() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    tocLinks.forEach(function(link) {
+      link.addEventListener('click', function() { if (window.innerWidth <= 1024 && sidebar) sidebar.classList.remove('open'); });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() { initScrollObserver(); initTocHighlight(); initSidebarLinks(); });
+})();
+</script>
+</body>
+</html>
