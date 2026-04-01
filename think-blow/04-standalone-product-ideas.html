@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>独立趣味产品创意库</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary); padding: 2px 7px; border-radius: 4px; font-size: 0.88em; color: var(--accent-cyan);
+}
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+.particle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+.particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--accent-blue); opacity: 0; animation: particleFloat linear infinite; }
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color); z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue); padding: 6px 14px; background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2); border-radius: 20px; transition: all var(--transition);
+}
+.top-nav .back-link:hover { background: rgba(88,166,255,0.15); border-color: var(--accent-blue); box-shadow: var(--glow-blue); }
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title { font-size: 0.9rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sidebar {
+  position: fixed; top: 56px; left: 0; width: var(--sidebar-width); height: calc(100vh - 56px);
+  background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50; padding: 24px 0; transform: translateX(0); transition: transform var(--transition);
+}
+.sidebar-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); padding: 0 20px; margin-bottom: 12px; }
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px; padding: 7px 20px; font-size: 0.82rem;
+  color: var(--text-secondary); border-left: 3px solid transparent; transition: all var(--transition);
+}
+.sidebar-nav a:hover { color: var(--text-primary); background: rgba(88,166,255,0.05); border-left-color: rgba(88,166,255,0.3); }
+.sidebar-nav a.active { color: var(--accent-blue); background: rgba(88,166,255,0.08); border-left-color: var(--accent-blue); font-weight: 600; }
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--bg-tertiary); font-size: 0.65rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.sidebar-toggle {
+  display: none; position: fixed; top: 62px; left: 12px; z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; align-items: center; justify-content: center;
+}
+
+.main-content { margin-left: var(--sidebar-width); margin-top: 56px; padding: 0; position: relative; z-index: 1; min-height: calc(100vh - 56px); }
+.container { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+.page-header { padding: 60px 0 40px; text-align: center; position: relative; overflow: hidden; }
+.page-header::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow { 0% { transform: translate(-5%, -5%) scale(1); } 100% { transform: translate(5%, 5%) scale(1.1); } }
+.page-header .badge {
+  display: inline-block; padding: 5px 14px; background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3); border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px; letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+  background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle { font-size: 1rem; color: var(--text-secondary); max-width: 700px; margin: 0 auto; }
+.header-line { width: 60px; height: 3px; background: var(--gradient-primary); margin: 24px auto 0; border-radius: 2px; }
+
+.content-section { padding: 56px 0 20px; scroll-margin-top: 80px; }
+.section-title { margin-bottom: 36px; }
+.section-title h2 { font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: var(--radius-sm); font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p { color: var(--text-secondary); font-size: 0.95rem; margin-left: 52px; }
+
+.fade-section { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.fade-section.visible { opacity: 1; transform: translateY(0); }
+
+.matrix-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-color); }
+.matrix-table thead th { padding: 14px 16px; font-size: 0.85rem; font-weight: 700; color: var(--accent-blue); background: var(--bg-secondary); border-bottom: 2px solid var(--border-color); text-align: left; }
+.matrix-table tbody tr { border-bottom: 1px solid rgba(48,54,61,0.5); transition: all var(--transition); }
+.matrix-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+.matrix-table tbody td { padding: 10px 14px; font-size: 0.84rem; color: var(--text-secondary); vertical-align: middle; }
+.matrix-table .cap-name { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+.star-bar { display: flex; align-items: center; gap: 8px; }
+.star-bar-track { width: 80px; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+.star-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.star-bar-label { font-size: 0.75rem; color: var(--text-muted); min-width: 28px; }
+
+.cap-card {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px; position: relative; overflow: hidden; transition: all var(--transition);
+}
+.cap-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 4px 0 0 4px; }
+.cap-card:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.cap-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.cap-num {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.cap-title { font-size: 1.15rem; font-weight: 700; }
+.cap-subtitle { font-size: 0.82rem; color: var(--text-muted); }
+.cap-source {
+  margin-left: auto; font-size: 0.72rem; font-weight: 600; padding: 3px 12px; border-radius: 12px;
+  background: var(--bg-tertiary); color: var(--text-muted);
+}
+.cap-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.7; }
+.cap-arch {
+  background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 16px 20px; margin-bottom: 16px; overflow-x: auto;
+}
+.cap-arch pre { margin: 0; font-family: "SF Mono", "Fira Code", Consolas, monospace; font-size: 0.82rem; color: var(--accent-cyan); line-height: 1.6; white-space: pre; }
+.cap-decisions { list-style: none; margin-bottom: 16px; }
+.cap-decisions li {
+  display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 0.88rem; color: var(--text-secondary);
+  border-bottom: 1px solid rgba(48,54,61,0.3);
+}
+.cap-decisions li:last-child { border-bottom: none; }
+.cap-decisions .dec-icon { flex-shrink: 0; margin-top: 2px; color: var(--accent-green); }
+.cap-product {
+  background: var(--bg-secondary); border-left: 3px solid; border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 16px 20px; position: relative;
+}
+.cap-product-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
+.cap-product-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+
+.cap-blue::before { background: var(--accent-blue); }
+.cap-blue .cap-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.cap-blue:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+.cap-blue .cap-product { border-left-color: var(--accent-blue); }
+.cap-purple::before { background: var(--accent-purple); }
+.cap-purple .cap-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.cap-purple:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+.cap-purple .cap-product { border-left-color: var(--accent-purple); }
+.cap-green::before { background: var(--accent-green); }
+.cap-green .cap-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.cap-green:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+.cap-green .cap-product { border-left-color: var(--accent-green); }
+.cap-cyan::before { background: var(--accent-cyan); }
+.cap-cyan .cap-num { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+.cap-cyan:hover { box-shadow: 0 0 20px rgba(118,228,247,0.12); }
+.cap-cyan .cap-product { border-left-color: var(--accent-cyan); }
+.cap-orange::before { background: var(--accent-orange); }
+.cap-orange .cap-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.cap-orange:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+.cap-orange .cap-product { border-left-color: var(--accent-orange); }
+.cap-pink::before { background: var(--accent-pink); }
+.cap-pink .cap-num { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+.cap-pink:hover { box-shadow: 0 0 20px rgba(247,120,186,0.12); }
+.cap-pink .cap-product { border-left-color: var(--accent-pink); }
+.cap-yellow::before { background: var(--accent-yellow); }
+.cap-yellow .cap-num { background: rgba(245,213,71,0.15); color: var(--accent-yellow); }
+.cap-yellow:hover { box-shadow: 0 0 20px rgba(245,213,71,0.12); }
+.cap-yellow .cap-product { border-left-color: var(--accent-yellow); }
+.cap-red::before { background: var(--accent-red); }
+.cap-red .cap-num { background: rgba(255,123,114,0.15); color: var(--accent-red); }
+.cap-red:hover { box-shadow: 0 0 20px rgba(255,123,114,0.12); }
+.cap-red .cap-product { border-left-color: var(--accent-red); }
+
+/* Fun tags & target badge */
+.fun-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.fun-tag {
+  display: inline-block; padding: 4px 12px; border-radius: 14px; font-size: 0.78rem; font-weight: 600;
+  border: 1px solid; transition: all var(--transition);
+}
+.fun-tag-blue { background: rgba(88,166,255,0.1); color: var(--accent-blue); border-color: rgba(88,166,255,0.25); }
+.fun-tag-purple { background: rgba(188,140,255,0.1); color: var(--accent-purple); border-color: rgba(188,140,255,0.25); }
+.fun-tag-green { background: rgba(126,231,135,0.1); color: var(--accent-green); border-color: rgba(126,231,135,0.25); }
+.fun-tag-orange { background: rgba(240,136,62,0.1); color: var(--accent-orange); border-color: rgba(240,136,62,0.25); }
+.fun-tag-pink { background: rgba(247,120,186,0.1); color: var(--accent-pink); border-color: rgba(247,120,186,0.25); }
+.fun-tag-cyan { background: rgba(118,228,247,0.1); color: var(--accent-cyan); border-color: rgba(118,228,247,0.25); }
+.target-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600;
+  background: rgba(188,140,255,0.1); color: var(--accent-purple); border: 1px solid rgba(188,140,255,0.2); margin-bottom: 14px;
+}
+
+/* Feasibility bar */
+.feasibility { margin-top: 16px; }
+.feasibility-label { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.feasibility-track { width: 100%; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
+.feasibility-fill { height: 100%; border-radius: 4px; background: var(--gradient-green); transition: width 1.2s ease; }
+
+/* Priority Section */
+.priority-tier { margin-bottom: 32px; }
+.tier-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.tier-badge { padding: 5px 14px; border-radius: 14px; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; }
+.tier-green .tier-badge { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.tier-yellow .tier-badge { background: rgba(245,213,71,0.15); color: var(--accent-yellow); }
+.tier-title { font-size: 1.1rem; font-weight: 700; }
+.tier-items { display: flex; flex-direction: column; gap: 12px; }
+.tier-item {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 16px 20px; display: flex; align-items: center; gap: 16px; transition: all var(--transition); position: relative; overflow: hidden;
+}
+.tier-item::before { content: ''; position: absolute; left: 0; top: 0; width: 3px; height: 100%; }
+.tier-green .tier-item::before { background: var(--accent-green); }
+.tier-yellow .tier-item::before { background: var(--accent-yellow); }
+.tier-item:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.tier-product { font-weight: 700; font-size: 0.95rem; min-width: 160px; }
+.tier-cap { font-size: 0.85rem; color: var(--accent-cyan); flex: 1; }
+.tier-complexity { font-size: 0.78rem; padding: 2px 10px; border-radius: 10px; background: var(--bg-tertiary); color: var(--text-muted); }
+
+.summary-box {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px;
+}
+.summary-text { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 20px; }
+.top3-list { list-style: none; }
+.top3-list li {
+  display: flex; align-items: center; gap: 14px; padding: 14px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4); font-size: 0.95rem;
+}
+.top3-list li:last-child { border-bottom: none; }
+.top3-num {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 800; flex-shrink: 0; background: rgba(88,166,255,0.15); color: var(--accent-blue);
+}
+.top3-name { font-weight: 700; color: var(--text-primary); }
+.top3-desc { color: var(--text-secondary); font-size: 0.88rem; }
+
+.footer { padding: 48px 0; text-align: center; border-top: 1px solid var(--border-color); margin-top: 40px; }
+.footer p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px; }
+.footer .footer-brand { font-weight: 600; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .cap-card-head { flex-wrap: wrap; }
+  .cap-source { margin-left: 0; }
+  .matrix-table { font-size: 0.8rem; }
+  .tier-item { flex-wrap: wrap; gap: 8px; }
+  .top-nav .page-title { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="particle-bg" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l4-4m-4 4l4 4"/></svg>
+    返回目录
+  </a>
+  <span class="page-title">独立趣味产品创意库 — Claude Code v2.1.88</span>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-overview"><span class="toc-num">总</span>创意全景</a></li>
+    <li><a href="#idea1"><span class="toc-num">1</span>AI终端游戏引擎</a></li>
+    <li><a href="#idea2"><span class="toc-num">2</span>AI代码实验室</a></li>
+    <li><a href="#idea3"><span class="toc-num">3</span>智能文档搜索</a></li>
+    <li><a href="#idea4"><span class="toc-num">4</span>AI协作编程</a></li>
+    <li><a href="#idea5"><span class="toc-num">5</span>AI命令预测器</a></li>
+    <li><a href="#idea6"><span class="toc-num">6</span>对话成本计算器</a></li>
+    <li><a href="#idea7"><span class="toc-num">7</span>命令安全卫士</a></li>
+    <li><a href="#idea8"><span class="toc-num">8</span>AI记忆管家</a></li>
+    <li><a href="#idea9"><span class="toc-num">9</span>Agent工具市场</a></li>
+    <li><a href="#idea10"><span class="toc-num">10</span>智能Prompt工坊</a></li>
+    <li><a href="#idea11"><span class="toc-num">11</span>终端Dashboard</a></li>
+    <li><a href="#idea12"><span class="toc-num">12</span>AI工作流引擎</a></li>
+    <li><a href="#sec-priority"><span class="toc-num">优</span>优先级评估</a></li>
+    <li><a href="#sec-summary"><span class="toc-num">结</span>总结</a></li>
+  </ul>
+</aside>
+
+<main class="main-content">
+  <div class="container">
+
+    <header class="page-header">
+      <div class="badge">STANDALONE PRODUCT IDEAS</div>
+      <h1>🎯 独立趣味产品创意库</h1>
+      <p class="subtitle">从 Claude Code v2.1.88 源码中提取的 12 个可独立做成有趣产品的功能创意，包含产品概念、技术实现路径和 MVP 规划</p>
+      <div class="header-line"></div>
+    </header>
+
+    <!-- Section 1: Overview -->
+    <section class="content-section fade-section" id="sec-overview">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🗺️</span>创意全景</h2>
+        <p>12 个产品创意一览：从极客玩具到企业级平台</p>
+      </div>
+      <table class="matrix-table">
+        <thead><tr><th>编号</th><th>产品名称</th><th>灵感来源</th><th>目标用户</th><th>趣味度</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="cap-name">🎮 AI 终端游戏引擎</td><td>React+Ink 框架</td><td>开发者/极客</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div><span class="star-bar-label">100%</span></div></td></tr>
+          <tr><td>2</td><td class="cap-name">🧪 AI 代码实验室</td><td>Worktree + 推测执行</td><td>开发者</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>3</td><td class="cap-name">📚 智能文档搜索引擎</td><td>MCP + WebFetch + 记忆</td><td>知识工作者</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>4</td><td class="cap-name">🤝 AI 协作编程平台</td><td>Bridge + 多Agent</td><td>开发团队</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div><span class="star-bar-label">100%</span></div></td></tr>
+          <tr><td>5</td><td class="cap-name">🔮 AI 命令预测器</td><td>推测执行引擎</td><td>运维/DevOps</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>6</td><td class="cap-name">📊 对话成本计算器</td><td>Token追踪 + 可视化</td><td>AI 开发者</td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div><span class="star-bar-label">60%</span></div></td></tr>
+          <tr><td>7</td><td class="cap-name">🛡️ 命令安全卫士</td><td>Bash分类器</td><td>系统管理员</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>8</td><td class="cap-name">🧠 AI 记忆管家</td><td>Dream + 团队记忆</td><td>团队/个人</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div><span class="star-bar-label">100%</span></div></td></tr>
+          <tr><td>9</td><td class="cap-name">🔌 Agent 工具市场</td><td>Plugin + Skill生态</td><td>AI 开发者</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>10</td><td class="cap-name">🎯 智能 Prompt 工坊</td><td>Prompt组装机制</td><td>AI 工程师</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>11</td><td class="cap-name">🖥️ 终端 Dashboard</td><td>React+Ink组件库</td><td>运维/DevOps</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div><span class="star-bar-label">80%</span></div></td></tr>
+          <tr><td>12</td><td class="cap-name">🔄 AI 工作流引擎</td><td>Task + Coordinator</td><td>自动化爱好者</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div><span class="star-bar-label">100%</span></div></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Idea 1 -->
+    <section class="content-section fade-section" id="idea1">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🎮</span>创意 1：AI 终端游戏引擎</h2></div>
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <div class="cap-num">1</div>
+          <div><div class="cap-title">🎮 AI 终端游戏引擎「TermGame Studio」</div><div class="cap-subtitle">(Terminal Game Engine)</div></div>
+          <span class="cap-source">灵感来源: React+Ink 框架（33+ 组件、33+ Hooks）</span>
+        </div>
+        <p class="cap-desc">基于 React+Ink 的终端游戏开发框架，用 React 声明式方式开发终端游戏。将 Claude Code 中强大的终端 UI 组件库转化为游戏引擎。</p>
+        <span class="target-badge">🎯 目标用户: 开发者/极客</span>
+        <div class="cap-arch"><pre>从 Claude Code 提取：
+├── React+Ink 渲染引擎 → 游戏画面渲染
+├── useVimInput Hook → 游戏键盘控制
+├── useVirtualScroll → 大地图滚动
+├── useArrowKeyHistory → 角色移动
+├── DiffView 组件 → 关卡对比视图
+├── ProgressTracker → 生命值/进度条
+└── 流式文本渲染 → 对话/剧情文字效果</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>终端 Roguelike ASCII RPG</li>
+          <li><span class="dec-icon">✦</span>终端战略游戏</li>
+          <li><span class="dec-icon">✦</span>AI 对话冒险（集成 Claude API）</li>
+          <li><span class="dec-icon">✦</span>编程挑战游戏</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-blue">🕹️ 在终端里玩游戏</span><span class="fun-tag fun-tag-purple">🤖 AI当NPC</span><span class="fun-tag fun-tag-green">🎨 ASCII艺术</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-blue);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1: 抽取核心组件 → Week 2: 封装游戏引擎 API → Week 3: 示例游戏 → Week 4: 文档+发布npm</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>85%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:85%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 2 -->
+    <section class="content-section fade-section" id="idea2">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">🧪</span>创意 2：AI 代码实验室</h2></div>
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <div class="cap-num">2</div>
+          <div><div class="cap-title">🧪 AI 代码实验室「CodeLab AI」</div><div class="cap-subtitle">(AI Code Laboratory)</div></div>
+          <span class="cap-source">灵感来源: Worktree 隔离 + 推测性执行</span>
+        </div>
+        <p class="cap-desc">AI 驱动的代码实验平台，每个实验在 Git Worktree 中隔离执行。让你同时探索多种方案，AI 自动评估最优解。</p>
+        <span class="target-badge">🎯 目标用户: 开发者</span>
+        <div class="cap-arch"><pre>实验工作台
+├── 新建实验 → AI 自动创建多个 Worktree
+├── 实验对比 → 代码Diff/性能/质量对比
+├── 实验合并 → 选择最优方案合并
+└── 实验历史 → 学习轨迹 + Dream 记忆</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>多方案并行实验</li>
+          <li><span class="dec-icon">✦</span>自动测试基准</li>
+          <li><span class="dec-icon">✦</span>AI 综合评估</li>
+          <li><span class="dec-icon">✦</span>零等待推测执行</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-purple">🌌 平行宇宙编码</span><span class="fun-tag fun-tag-orange">⚔️ 方案PK</span><span class="fun-tag fun-tag-cyan">🏆 AI裁判</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-purple);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-2: Worktree管理+CLI → Week 3-4: AI多方案生成 → Week 5-6: 对比视图 → Week 7-8: 实验历史</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>70%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:70%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 3 -->
+    <section class="content-section fade-section" id="idea3">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">📚</span>创意 3：智能文档搜索引擎</h2></div>
+      <div class="cap-card cap-green">
+        <div class="cap-card-head">
+          <div class="cap-num">3</div>
+          <div><div class="cap-title">📚 智能文档搜索引擎「DocMind」</div><div class="cap-subtitle">(Smart Document Search)</div></div>
+          <span class="cap-source">灵感来源: MCP 协议 + WebFetch + 记忆系统</span>
+        </div>
+        <p class="cap-desc">AI 驱动的文档搜索引擎，通过 MCP 协议接入各种文档源，提供语义搜索和智能推荐。</p>
+        <span class="target-badge">🎯 目标用户: 知识工作者</span>
+        <div class="cap-arch"><pre>DocMind
+├── 文档源（MCP Server）
+│   ├── Notion/Confluence/GitHub/Google Docs
+│   └── 本地文件 + 网页内容
+├── 索引引擎 → 语义向量化 + 知识图谱
+├── 查询引擎 → 自然语言搜索 + 流式返回
+└── 记忆系统 → 搜索历史学习 + 知识推荐</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>多源文档聚合</li>
+          <li><span class="dec-icon">✦</span>语义搜索</li>
+          <li><span class="dec-icon">✦</span>知识图谱</li>
+          <li><span class="dec-icon">✦</span>AI问答</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-green">🔍 跨平台搜索</span><span class="fun-tag fun-tag-blue">🕸️ 知识图谱</span><span class="fun-tag fun-tag-pink">💡 AI推荐</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-green);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-2: MCP文档连接器 → Week 3-4: 语义搜索 → Week 5-6: AI问答 → Week 7-8: 知识推荐</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>70%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:70%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 4 -->
+    <section class="content-section fade-section" id="idea4">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">🤝</span>创意 4：AI 协作编程平台</h2></div>
+      <div class="cap-card cap-cyan">
+        <div class="cap-card-head">
+          <div class="cap-num">4</div>
+          <div><div class="cap-title">🤝 AI 协作编程平台「CodeTeam AI」</div><div class="cap-subtitle">(AI Collaborative Programming)</div></div>
+          <span class="cap-source">灵感来源: Bridge 远程控制 + 多 Agent 团队</span>
+        </div>
+        <p class="cap-desc">多人 + 多 AI Agent 协作编程平台，让人类和 AI 在同一个项目中无缝协作。</p>
+        <span class="target-badge">🎯 目标用户: 开发团队</span>
+        <div class="cap-arch"><pre>项目（Code Workspace）
+├── 人类成员 → 前端/后端/审查
+├── AI Agent 成员
+│   ├── AI 架构师/测试员/审查员/文档员
+└── 通信机制（5种路径）
+    ├── 文件邮箱/实时消息/代码评论
+    └── 广播 + Bridge 远程接入</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>AI Pair Programming</li>
+          <li><span class="dec-icon">✦</span>AI Team分工</li>
+          <li><span class="dec-icon">✦</span>Human+AI混合团队</li>
+          <li><span class="dec-icon">✦</span>实时同步</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-cyan">👥 AI队友</span><span class="fun-tag fun-tag-orange">🤝 人机混合</span><span class="fun-tag fun-tag-purple">🤖 多Agent协作</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-cyan);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-3: Bridge远程协作 → Week 4-6: 多Agent管理 → Week 7-9: 混合团队 → Week 10-12: Web UI</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>65%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:65%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 5 -->
+    <section class="content-section fade-section" id="idea5">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">🔮</span>创意 5：AI 命令预测器</h2></div>
+      <div class="cap-card cap-orange">
+        <div class="cap-card-head">
+          <div class="cap-num">5</div>
+          <div><div class="cap-title">🔮 AI 命令预测器「ShellOracle」</div><div class="cap-subtitle">(AI Command Predictor)</div></div>
+          <span class="cap-source">灵感来源: 推测性执行引擎</span>
+        </div>
+        <p class="cap-desc">Shell 插件，实时预测下一条命令，Tab 自动补全。越用越聪明的终端命令预测器。</p>
+        <span class="target-badge">🎯 目标用户: 运维/DevOps</span>
+        <div class="cap-arch"><pre>用户执行: git status → 显示 2 files changed
+ShellOracle 预测：
+├── 80% → git add .
+├── 15% → git diff
+└── 5%  → git checkout -- .
+用户输入: git a_ → 补全: git add .</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>命令历史分析</li>
+          <li><span class="dec-icon">✦</span>上下文感知</li>
+          <li><span class="dec-icon">✦</span>AI预测</li>
+          <li><span class="dec-icon">✦</span>安全过滤</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-orange">🧠 读心术Shell</span><span class="fun-tag fun-tag-green">⚡ Tab即执行</span><span class="fun-tag fun-tag-blue">📈 越用越聪明</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-orange);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1: Shell插件框架 → Week 2: 历史分析+预测 → Week 3: AI预测 → Week 4: 安全过滤</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>80%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:80%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 6 -->
+    <section class="content-section fade-section" id="idea6">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(247,120,186,0.12);color:var(--accent-pink);">📊</span>创意 6：对话成本计算器</h2></div>
+      <div class="cap-card cap-pink">
+        <div class="cap-card-head">
+          <div class="cap-num">6</div>
+          <div><div class="cap-title">📊 AI 对话成本计算器「TokenMeter」</div><div class="cap-subtitle">(AI Cost Calculator)</div></div>
+          <span class="cap-source">灵感来源: 三阶段 Token 追踪 + 多供应商成本估算</span>
+        </div>
+        <p class="cap-desc">可视化 AI API 成本计算和优化工具，帮你看清每次对话花了多少钱。</p>
+        <span class="target-badge">🎯 目标用户: AI 开发者</span>
+        <div class="cap-arch"><pre>TokenMeter Dashboard
+├── 实时监控 → Token流量/成本速率/累计追踪
+├── 成本优化 → Prompt瘦身/缓存分析/模型降级
+├── 多模型比较 → 质量vs成本权衡
+└── 团队报表 → 成本分摊/趋势/预算告警</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>Token流量瀑布图</li>
+          <li><span class="dec-icon">✦</span>缓存命中率</li>
+          <li><span class="dec-icon">✦</span>模型降级建议</li>
+          <li><span class="dec-icon">✦</span>预算告警</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-pink">🔥 烧钱可视化</span><span class="fun-tag fun-tag-green">💰 省钱小助手</span><span class="fun-tag fun-tag-cyan">📊 模型比价</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-pink);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1: Token计量 → Week 2: Dashboard → Week 3: 优化建议 → Week 4: 多模型+报表</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>90%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:90%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 7 -->
+    <section class="content-section fade-section" id="idea7">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(245,213,71,0.12);color:var(--accent-yellow);">🛡️</span>创意 7：命令安全卫士</h2></div>
+      <div class="cap-card cap-yellow">
+        <div class="cap-card-head">
+          <div class="cap-num">7</div>
+          <div><div class="cap-title">🛡️ 命令安全卫士「ShellGuard」</div><div class="cap-subtitle">(Command Security Guard)</div></div>
+          <span class="cap-source">灵感来源: 23+ 检测器 Bash 分类器 + 两阶段安全评估</span>
+        </div>
+        <p class="cap-desc">实时 Shell 命令安全检查工具，在你执行危险命令前给出警告和安全替代建议。</p>
+        <span class="target-badge">🎯 目标用户: 系统管理员</span>
+        <div class="cap-arch"><pre>ShellGuard 检测引擎
+├── 静态分析（&lt; 1ms，23+ 检测器）
+│   ├── 命令注入/变量注入/重定向风险
+│   ├── 编码欺骗/管道链/权限提升
+│   └── 网络外传/进程注入/环境泄漏
+├── AI 分析（~100ms）→ 意图理解+替代建议
+└── 🟢安全 / 🟡警告 / 🔴危险</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>23+静态检测器</li>
+          <li><span class="dec-icon">✦</span>AI深度分析</li>
+          <li><span class="dec-icon">✦</span>生产服务器审计</li>
+          <li><span class="dec-icon">✦</span>CI/CD检查</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-orange">🚧 命令守门员</span><span class="fun-tag fun-tag-pink">💣 rm -rf克星</span><span class="fun-tag fun-tag-green">🛡️ 新手保护伞</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-yellow);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1: 核心检测引擎 → Week 2: Shell集成 → Week 3: AI分析 → Week 4: Web管理面板</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>95%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:95%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 8 -->
+    <section class="content-section fade-section" id="idea8">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(255,123,114,0.12);color:var(--accent-red);">🧠</span>创意 8：AI 记忆管家</h2></div>
+      <div class="cap-card cap-red">
+        <div class="cap-card-head">
+          <div class="cap-num">8</div>
+          <div><div class="cap-title">🧠 AI 记忆管家「MemoBot」</div><div class="cap-subtitle">(AI Memory Butler)</div></div>
+          <span class="cap-source">灵感来源: Dream 记忆巩固 + 三层记忆架构 + 团队同步</span>
+        </div>
+        <p class="cap-desc">自动整理 AI 对话中有价值信息，AI"睡觉"时整理笔记。让知识不再随对话消失。</p>
+        <span class="target-badge">🎯 目标用户: 团队/个人</span>
+        <div class="cap-arch"><pre>MemoBot
+├── 自动记忆（Dream 模式）
+│   ├── 对话结束自动提取关键信息
+│   ├── 分类整理 + 关联知识图谱
+│   └── 智能遗忘（清理过时信息）
+├── 记忆查询 → 自然语言检索
+├── 团队共享 → 知识库+新成员注入
+└── 记忆可视化 → 知识图谱+遗忘曲线</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>Dream巩固机制</li>
+          <li><span class="dec-icon">✦</span>跨AI平台记忆</li>
+          <li><span class="dec-icon">✦</span>团队知识库</li>
+          <li><span class="dec-icon">✦</span>遗忘曲线</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-purple">💤 AI做梦</span><span class="fun-tag fun-tag-blue">🧠 永不遗忘</span><span class="fun-tag fun-tag-green">📖 知识传承</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-red);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-2: Dream记忆引擎 → Week 3-4: 存储与检索 → Week 5-6: 团队同步 → Week 7-8: 可视化</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>75%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:75%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 9 -->
+    <section class="content-section fade-section" id="idea9">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🔌</span>创意 9：Agent 工具市场</h2></div>
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <div class="cap-num">9</div>
+          <div><div class="cap-title">🔌 Agent 工具市场「ToolBazaar」</div><div class="cap-subtitle">(Agent Tool Marketplace)</div></div>
+          <span class="cap-source">灵感来源: Plugin 市场 + Skill 系统 + MCP 协议</span>
+        </div>
+        <p class="cap-desc">AI Agent 工具的发布、发现和安装平台，打造 AI 时代的 App Store。</p>
+        <span class="target-badge">🎯 目标用户: AI 开发者</span>
+        <div class="cap-arch"><pre>ToolBazaar
+├── MCP Server 市场 → 数据库/云服务/SaaS
+├── Skill 市场 → 代码生成/运维/文档/数据
+├── Plugin 市场 → IDE/安全/质量/企业
+└── 功能：发布/发现/安装/社区</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>标准化发布</li>
+          <li><span class="dec-icon">✦</span>语义搜索</li>
+          <li><span class="dec-icon">✦</span>AI推荐</li>
+          <li><span class="dec-icon">✦</span>版本管理</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-blue">📱 AI的App Store</span><span class="fun-tag fun-tag-orange">🛒 工具淘宝</span><span class="fun-tag fun-tag-green">🌱 生态爆发</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-blue);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-3: 注册中心 → Week 4-6: Web市场 → Week 7-9: Skill市场 → Week 10-12: 社区+AI推荐</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>75%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:75%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 10 -->
+    <section class="content-section fade-section" id="idea10">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">🎯</span>创意 10：智能 Prompt 工坊</h2></div>
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <div class="cap-num">10</div>
+          <div><div class="cap-title">🎯 智能 Prompt 工坊「PromptForge」</div><div class="cap-subtitle">(Smart Prompt Workshop)</div></div>
+          <span class="cap-source">灵感来源: 系统 Prompt 组装机制 + 上下文管理</span>
+        </div>
+        <p class="cap-desc">可视化 Prompt 设计、测试和优化平台，像搭积木一样构建高质量 Prompt。</p>
+        <span class="target-badge">🎯 目标用户: AI 工程师</span>
+        <div class="cap-arch"><pre>PromptForge
+├── Prompt 设计器 → 可视化模块拖拽
+├── Prompt 测试场 → A/B测试+质量评分
+├── Prompt 优化器 → Token/效果/缓存优化
+└── Prompt 市场 → 模板分享+行业模板</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>可视化模块拖拽</li>
+          <li><span class="dec-icon">✦</span>A/B测试</li>
+          <li><span class="dec-icon">✦</span>Token优化</li>
+          <li><span class="dec-icon">✦</span>模板市场</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-purple">🧱 Prompt乐高</span><span class="fun-tag fun-tag-cyan">⚔️ 效果PK</span><span class="fun-tag fun-tag-green">💎 省Token大师</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-purple);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-2: Prompt编辑器 → Week 3-4: 测试场 → Week 5-6: Token分析 → Week 7-8: 模板市场</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>85%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:85%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 11 -->
+    <section class="content-section fade-section" id="idea11">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">🖥️</span>创意 11：终端 Dashboard 生成器</h2></div>
+      <div class="cap-card cap-green">
+        <div class="cap-card-head">
+          <div class="cap-num">11</div>
+          <div><div class="cap-title">🖥️ 终端 Dashboard 生成器「TermDash」</div><div class="cap-subtitle">(Terminal Dashboard Generator)</div></div>
+          <span class="cap-source">灵感来源: React+Ink 组件库（33+ 组件）</span>
+        </div>
+        <p class="cap-desc">用 YAML/JSON 声明式定义终端 Dashboard，一行配置搞定专业监控面板。</p>
+        <span class="target-badge">🎯 目标用户: 运维/DevOps</span>
+        <div class="cap-arch"><pre>TermDash
+├── YAML 声明式配置
+│   ├── layout: grid(3,2)
+│   └── widgets: chart/table/gauge/log
+├── 组件库（从 Claude Code 提取）
+│   ├── 表格/进度条/日志流/图表
+│   └── 仪表盘/Diff视图/树形视图
+└── 数据源适配 → Prometheus/ES/自定义</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>声明式配置</li>
+          <li><span class="dec-icon">✦</span>丰富组件库</li>
+          <li><span class="dec-icon">✦</span>多数据源</li>
+          <li><span class="dec-icon">✦</span>主题系统</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-green">📝 YAML即Dashboard</span><span class="fun-tag fun-tag-pink">✨ 终端颜值巅峰</span><span class="fun-tag fun-tag-blue">🔌 SSH也能监控</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-green);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1: 渲染引擎+YAML → Week 2: 5个Widget → Week 3: 数据源适配 → Week 4: 主题+发布</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>85%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:85%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Idea 12 -->
+    <section class="content-section fade-section" id="idea12">
+      <div class="section-title"><h2><span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">🔄</span>创意 12：AI 工作流引擎</h2></div>
+      <div class="cap-card cap-cyan">
+        <div class="cap-card-head">
+          <div class="cap-num">12</div>
+          <div><div class="cap-title">🔄 AI 工作流引擎「FlowAgent」</div><div class="cap-subtitle">(AI Workflow Engine)</div></div>
+          <span class="cap-source">灵感来源: Task 框架 + Coordinator 编排 + Cron 调度</span>
+        </div>
+        <p class="cap-desc">低代码 AI 工作流编排平台，用可视化 DAG 设计自动化流程。</p>
+        <span class="target-badge">🎯 目标用户: 自动化爱好者</span>
+        <div class="cap-arch"><pre>FlowAgent
+├── 工作流设计器（可视化 DAG）
+│   ├── 步骤定义 + 依赖关系
+│   └── 错误处理 + 变量传递
+├── 执行引擎 → DAG调度/并行执行/超时
+├── 调度系统 → 定时/事件/手动/条件
+└── 监控面板 → 执行历史/成本/告警</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>可视化DAG</li>
+          <li><span class="dec-icon">✦</span>并行执行</li>
+          <li><span class="dec-icon">✦</span>Cron调度</li>
+          <li><span class="dec-icon">✦</span>Webhook触发</li>
+        </ul>
+        <div class="fun-tags"><span class="fun-tag fun-tag-cyan">🔗 AI流水线</span><span class="fun-tag fun-tag-orange">⏰ 定时AI助手</span><span class="fun-tag fun-tag-purple">🤖 自动化一切</span></div>
+        <div class="cap-product" style="border-left-color:var(--accent-cyan);">
+          <div class="cap-product-title">📋 MVP 路线</div>
+          <div class="cap-product-desc">Week 1-2: YAML解析+DAG → Week 3-4: Agent执行器 → Week 5-6: Cron调度 → Week 7-8: Web编辑器</div>
+        </div>
+        <div class="feasibility"><div class="feasibility-label"><span>技术可行性</span><span>80%</span></div><div class="feasibility-track"><div class="feasibility-fill" style="width:80%;"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Priority -->
+    <section class="content-section fade-section" id="sec-priority">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">📊</span>优先级评估</h2>
+        <p>综合技术可行性、市场潜力、开发周期与趣味度的全面排名</p>
+      </div>
+      <table class="matrix-table">
+        <thead><tr><th>创意</th><th>技术可行性</th><th>市场潜力</th><th>开发周期</th><th>趣味度</th><th>综合评分</th></tr></thead>
+        <tbody>
+          <tr><td class="cap-name">🔄 AI 工作流引擎</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td>8周</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><strong style="color:var(--accent-green);">95</strong></td></tr>
+          <tr><td class="cap-name">🔌 Agent 工具市场</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td>12周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-green);">90</strong></td></tr>
+          <tr><td class="cap-name">🤝 AI 协作编程</td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td>12周</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><strong style="color:var(--accent-green);">88</strong></td></tr>
+          <tr><td class="cap-name">🛡️ 命令安全卫士</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td>4周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-green);">87</strong></td></tr>
+          <tr><td class="cap-name">🧠 AI 记忆管家</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td>8周</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><strong style="color:var(--accent-blue);">86</strong></td></tr>
+          <tr><td class="cap-name">🎯 智能 Prompt 工坊</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td>8周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-blue);">85</strong></td></tr>
+          <tr><td class="cap-name">🔮 AI 命令预测器</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td>4周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-blue);">80</strong></td></tr>
+          <tr><td class="cap-name">🧪 AI 代码实验室</td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td>8周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-yellow);">78</strong></td></tr>
+          <tr><td class="cap-name">📚 文档搜索引擎</td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td>8周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-yellow);">76</strong></td></tr>
+          <tr><td class="cap-name">🖥️ 终端 Dashboard</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td>4周</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><strong style="color:var(--accent-yellow);">75</strong></td></tr>
+          <tr><td class="cap-name">📊 AI 成本计算器</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td>4周</td><td><div class="star-bar"><span>⭐×3</span><div class="star-bar-track"><div class="star-bar-fill" style="width:60%;background:var(--gradient-cyan);"></div></div></div></td><td><strong style="color:var(--accent-yellow);">72</strong></td></tr>
+          <tr><td class="cap-name">🎮 终端游戏引擎</td><td><div class="star-bar"><span>⭐×4</span><div class="star-bar-track"><div class="star-bar-fill" style="width:80%;background:var(--gradient-green);"></div></div></div></td><td><div class="star-bar"><span>⭐×2</span><div class="star-bar-track"><div class="star-bar-fill" style="width:40%;background:var(--gradient-pink);"></div></div></div></td><td>4周</td><td><div class="star-bar"><span>⭐×5</span><div class="star-bar-track"><div class="star-bar-fill" style="width:100%;background:var(--gradient-warm);"></div></div></div></td><td><strong style="color:var(--accent-yellow);">70</strong></td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:36px;">
+        <h3 style="font-size:1.2rem;font-weight:700;margin-bottom:20px;">🏆 推荐启动顺序</h3>
+        <div class="priority-tier tier-green">
+          <div class="tier-head"><span class="tier-badge">首发推荐</span><span class="tier-title">快速启动</span></div>
+          <div class="tier-items">
+            <div class="tier-item"><span class="tier-product">🥇 命令安全卫士</span><span class="tier-cap">4周完成、市场刚需、技术成熟</span></div>
+            <div class="tier-item"><span class="tier-product">🥈 AI 工作流引擎</span><span class="tier-cap">市场最大、综合价值最高</span></div>
+          </div>
+        </div>
+        <div class="priority-tier tier-yellow">
+          <div class="tier-head"><span class="tier-badge">跟进推荐</span><span class="tier-title">差异化竞争</span></div>
+          <div class="tier-items">
+            <div class="tier-item"><span class="tier-product">🥉 AI 记忆管家</span><span class="tier-cap">差异化明显、用户粘性高</span></div>
+            <div class="tier-item"><span class="tier-product">🏅 Agent 工具市场</span><span class="tier-cap">生态效应、长期价值</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="content-section fade-section" id="sec-summary">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">✨</span>总结</h2>
+        <p>12 个创意构成从极客玩具到企业平台的完整光谱</p>
+      </div>
+      <div class="summary-box">
+        <p class="summary-text">Claude Code 的源码是一座<strong style="color:var(--accent-blue);">创新灵感的宝库</strong>。这 12 个产品创意覆盖了从极客玩具到企业级平台的完整光谱。每个创意都基于 Claude Code 中已经实现并经过验证的技术能力，<strong style="color:var(--accent-green);">技术风险低、实现路径清晰</strong>。</p>
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:14px;">🔗 最佳组合方案</h3>
+        <ul class="top3-list">
+          <li><span class="top3-num">1</span><span><span class="top3-name">Agent 工具市场 + AI 工作流引擎</span> = <span class="top3-desc">完整的 AI 自动化生态</span></span></li>
+          <li><span class="top3-num">2</span><span><span class="top3-name">AI 记忆管家 + Prompt 工坊</span> = <span class="top3-desc">AI 效能最大化平台</span></span></li>
+          <li><span class="top3-num">3</span><span><span class="top3-name">命令安全卫士 + AI 命令预测器</span> = <span class="top3-desc">终极 Shell 增强套件</span></span></li>
+        </ul>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <p><span class="footer-brand">Claude Code v2.1.88 源码分析</span></p>
+      <p>独立趣味产品创意库 · 12 个可独立做成有趣产品的功能创意</p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+(function() {
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
+    document.addEventListener('click', function(e) {
+      if (window.innerWidth <= 1024 && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== toggle) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+
+  function initTocHighlight() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    var sections = [];
+    tocLinks.forEach(function(link) {
+      var id = link.getAttribute('href').replace('#', '');
+      var el = document.getElementById(id);
+      if (el) sections.push({ el: el, link: link });
+    });
+    function updateActive() {
+      var scrollY = window.scrollY + 120;
+      var current = null;
+      sections.forEach(function(s) { if (s.el.offsetTop <= scrollY) current = s; });
+      tocLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) { requestAnimationFrame(function() { updateActive(); ticking = false; }); ticking = true; }
+    });
+    updateActive();
+  }
+
+  function initScrollObserver() {
+    var sections = document.querySelectorAll('.fade-section');
+    if (!('IntersectionObserver' in window)) { sections.forEach(function(s) { s.classList.add('visible'); }); return; }
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  function initSidebarLinks() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    tocLinks.forEach(function(link) {
+      link.addEventListener('click', function() { if (window.innerWidth <= 1024 && sidebar) sidebar.classList.remove('open'); });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() { initScrollObserver(); initTocHighlight(); initSidebarLinks(); });
+})();
+</script>
+</body>
+</html>
