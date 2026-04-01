@@ -249,11 +249,10 @@ section {
   color: var(--text-secondary);
 }
 
-.stat-card:nth-child(2) .stat-number,
-.stat-card:nth-child(2)::before { background: var(--gradient-green); -webkit-background-clip: text; background-clip: text; }
-.stat-card:nth-child(4) .stat-number,
-.stat-card:nth-child(4)::before { background: var(--gradient-warm); -webkit-background-clip: text; background-clip: text; }
-.stat-card:nth-child(2)::before, .stat-card:nth-child(4)::before { -webkit-text-fill-color: initial; }
+.stat-card:nth-child(2) .stat-number { background: var(--gradient-green); -webkit-background-clip: text; background-clip: text; }
+.stat-card:nth-child(4) .stat-number { background: var(--gradient-warm); -webkit-background-clip: text; background-clip: text; }
+.stat-card:nth-child(2)::before { background: var(--gradient-green); }
+.stat-card:nth-child(4)::before { background: var(--gradient-warm); }
 
 /* ========== Section Title ========== */
 .section-title {
@@ -976,11 +975,7 @@ section {
         var eased = easeOutQuart(progress);
         var current = Math.floor(eased * target);
 
-        if (target >= 10000) {
-          el.textContent = current.toLocaleString('en-US') + suffix;
-        } else {
-          el.textContent = current.toLocaleString('en-US') + suffix;
-        }
+        el.textContent = current.toLocaleString('en-US') + suffix;
 
         if (progress < 1) {
           requestAnimationFrame(step);
