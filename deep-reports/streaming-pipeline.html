@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ 流式处理与并发架构 - Claude Code v2.1.88 深度技术审计</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a { color: var(--accent-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  opacity: 0;
+}
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { width: 3px; height: 3px; left: 6%;  background: var(--accent-blue);   animation-duration: 18s; animation-delay: 0s; }
+.particle:nth-child(2)  { width: 2px; height: 2px; left: 14%; background: var(--accent-purple); animation-duration: 23s; animation-delay: 1s; }
+.particle:nth-child(3)  { width: 4px; height: 4px; left: 23%; background: var(--accent-green);  animation-duration: 16s; animation-delay: 3s; }
+.particle:nth-child(4)  { width: 2px; height: 2px; left: 32%; background: var(--accent-cyan);   animation-duration: 24s; animation-delay: 1.4s; }
+.particle:nth-child(5)  { width: 3px; height: 3px; left: 41%; background: var(--accent-pink);   animation-duration: 19s; animation-delay: 5s; }
+.particle:nth-child(6)  { width: 2px; height: 2px; left: 49%; background: var(--accent-orange); animation-duration: 17s; animation-delay: 2.5s; }
+.particle:nth-child(7)  { width: 4px; height: 4px; left: 58%; background: var(--accent-blue);   animation-duration: 22s; animation-delay: 4s; }
+.particle:nth-child(8)  { width: 3px; height: 3px; left: 67%; background: var(--accent-purple); animation-duration: 20s; animation-delay: 0.8s; }
+.particle:nth-child(9)  { width: 2px; height: 2px; left: 76%; background: var(--accent-green);  animation-duration: 21s; animation-delay: 6s; }
+.particle:nth-child(10) { width: 3px; height: 3px; left: 84%; background: var(--accent-cyan);   animation-duration: 15s; animation-delay: 3.2s; }
+.particle:nth-child(11) { width: 4px; height: 4px; left: 92%; background: var(--accent-pink);   animation-duration: 25s; animation-delay: 1.8s; }
+.particle:nth-child(12) { width: 2px; height: 2px; left: 98%; background: var(--accent-orange); animation-duration: 14s; animation-delay: 7s; }
+
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.top-nav a { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.top-nav .title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left: auto;
+}
+
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--glow-blue);
+  transition: var(--transition);
+}
+.sidebar-toggle:hover { transform: scale(1.08); }
+
+.layout {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+.sidebar {
+  width: 270px;
+  position: sticky;
+  top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+}
+.sidebar a {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  transition: var(--transition);
+  border-left: 2px solid transparent;
+}
+.sidebar a:hover,
+.sidebar a.active {
+  color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.08);
+  text-decoration: none;
+  border-left-color: var(--accent-blue);
+}
+
+.main { flex: 1; padding: 0 40px 60px; min-width: 0; }
+
+.hero {
+  text-align: center;
+  padding: 48px 0 36px;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(88,166,255,0.08) 0%, rgba(188,140,255,0.05) 42%, transparent 70%);
+  pointer-events: none;
+  animation: headerGlow 8s ease-in-out infinite;
+}
+@keyframes headerGlow {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 1; transform: translateX(-50%) scale(1.12); }
+}
+.hero-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--accent-blue);
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 6s ease-in-out infinite;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.hero-sub {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 820px;
+  margin: 0 auto 24px;
+  line-height: 1.8;
+}
+.hero-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--gradient-primary);
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 32px 0 40px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background: var(--gradient-primary);
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-highlight);
+  box-shadow: var(--glow-blue);
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.section { margin-bottom: 42px; scroll-margin-top: 76px; }
+.section h2 {
+  font-size: 28px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section .icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(88, 166, 255, 0.12);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  font-size: 18px;
+}
+.section-intro {
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+  font-size: 15px;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+.card h4 {
+  font-size: 17px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+.card p { color: var(--text-secondary); font-size: 14px; margin-bottom: 10px; }
+.callout {
+  border-left: 3px solid var(--accent-blue);
+  background: rgba(88, 166, 255, 0.07);
+  padding: 14px 16px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+.callout strong { color: var(--accent-blue); }
+.grid, .grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.code-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #c9d1d9;
+}
+.code-block .kw { color: #ff7b72; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .tp { color: #79c0ff; }
+.code-block .str { color: #a5d6ff; }
+.code-block .cm { color: #8b949e; }
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.compare-table th,
+.compare-table td {
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: top;
+}
+.compare-table th {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.compare-table td {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.01);
+}
+.compare-table code,
+.footer-meta code,
+p code,
+li code,
+.callout code {
+  color: var(--accent-cyan);
+  background: rgba(118, 228, 247, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.badge-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.badge-blue { background: rgba(88,166,255,0.12); color: var(--accent-blue); border-color: rgba(88,166,255,0.25); }
+.badge-green { background: rgba(126,231,135,0.12); color: var(--accent-green); border-color: rgba(126,231,135,0.25); }
+.badge-orange { background: rgba(240,136,62,0.12); color: var(--accent-orange); border-color: rgba(240,136,62,0.25); }
+.badge-purple { background: rgba(188,140,255,0.12); color: var(--accent-purple); border-color: rgba(188,140,255,0.25); }
+.badge-red { background: rgba(255,123,114,0.12); color: var(--accent-red); border-color: rgba(255,123,114,0.25); }
+
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pipe-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.pipe-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.pipe-content { flex: 1; color: var(--text-secondary); font-size: 14px; }
+.pipe-content strong { color: var(--accent-blue); }
+
+.note-list {
+  padding-left: 18px;
+}
+.note-list li {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 7px;
+}
+
+.footer {
+  text-align: center;
+  padding: 40px 20px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--accent-blue);
+  margin-bottom: 8px;
+}
+.footer-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .sidebar-toggle { display: block; }
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    position: fixed;
+    top: 52px;
+    left: -100%;
+    height: calc(100vh - 52px);
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    z-index: 150;
+    transition: left 0.3s;
+  }
+  .sidebar.open { left: 0; }
+  .main { padding: 0 16px 60px; }
+  .stats-grid, .grid, .grid-2 { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 28px; }
+}
+@media (max-width: 560px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-value { font-size: 22px; }
+  .top-nav .title { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="particles">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<nav class="top-nav">
+  <a href="index.html">← 返回导航中心</a>
+  <span class="title">⚡ 流式处理与并发架构</span>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="切换目录">☰</button>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a href="#overview">1. 架构总览</a>
+    <a href="#async-generator">2. AsyncGenerator 主干</a>
+    <a href="#streaming-executor">3. StreamingToolExecutor</a>
+    <a href="#orchestration">4. runTools 与并发分区</a>
+    <a href="#generator-helpers">5. generators.ts 工具链</a>
+    <a href="#message-queue">6. messageQueueManager</a>
+    <a href="#abort-hierarchy">7. 三层取消链</a>
+    <a href="#fallback">8. 回退、丢弃与背压</a>
+  </aside>
+
+  <main class="main">
+    <section class="hero">
+      <div class="hero-badge">Claude Code v2.1.88 · Query / Tool Runtime 深度分析</div>
+      <h1>⚡ 流式处理与并发架构</h1>
+      <p class="hero-sub">
+        本报告聚焦 Claude Code 在查询管道、工具执行器、消息队列与取消控制中的流式设计。分析严格建立在
+        <code>restored-src/src/query.ts</code>、<code>services/tools/StreamingToolExecutor.ts</code>、
+        <code>services/tools/toolOrchestration.ts</code>、<code>utils/generators.ts</code> 与
+        <code>utils/messageQueueManager.ts</code> 等文件的可见事实之上，重点解释它如何用 <code>AsyncGenerator</code>
+        把 UI 流、工具流、取消流与回退流整合成一个可中断、可限流、可恢复的架构。
+      </p>
+      <div class="hero-divider"></div>
+    </section>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">10</div>
+        <div class="stat-label">并发上限</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">3 层</div>
+        <div class="stat-label">取消链</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">AsyncGenerator</div>
+        <div class="stat-label">流式管道</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">背压控制</div>
+        <div class="stat-label">分区 + 队列 + 限流</div>
+      </div>
+    </div>
+
+    <section class="section" id="overview">
+      <h2><span class="icon">🏗️</span> 架构总览</h2>
+      <p class="section-intro">
+        Claude Code 的流式处理不是把“模型响应流”单独做成一个组件，而是让查询入口、工具执行、消息更新和取消信号都服从同一种生成器范式。核心意义在于：<strong>每一层都能边生产、边消费、边中断</strong>，因此上层 UI 不必等待整轮工具调用完成，底层执行器也不必把所有结果缓存在一次性结构里。
+      </p>
+
+      <div class="card">
+        <h4>从查询到工具结果的统一数据流</h4>
+        <div class="code-block">
+<span class="cm">┌────────────────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span> <span class="fn">query()</span> / <span class="fn">queryLoop()</span>                                         <span class="cm">│</span><br>
+<span class="cm">│</span>   yield <span class="tp">StreamEvent</span> / <span class="tp">RequestStartEvent</span> / <span class="tp">Message</span> ...      <span class="cm">│</span><br>
+<span class="cm">├────────────────────────────────────────────────────────────────────┤</span><br>
+<span class="cm">│</span> <span class="fn">StreamingToolExecutor</span> 或 <span class="fn">runTools()</span>                          <span class="cm">│</span><br>
+<span class="cm">│</span>   ├─ 并发安全工具：批量并行，受并发上限约束                         <span class="cm">│</span><br>
+<span class="cm">│</span>   ├─ 非并发工具：逐个执行，避免写入冲突                             <span class="cm">│</span><br>
+<span class="cm">│</span>   └─ 按消息增量回流 <span class="tp">MessageUpdate</span>                           <span class="cm">│</span><br>
+<span class="cm">├────────────────────────────────────────────────────────────────────┤</span><br>
+<span class="cm">│</span> <span class="fn">messageQueueManager</span>                                          <span class="cm">│</span><br>
+<span class="cm">│</span>   now &gt; next &gt; later，供 UI 与命令处理层按优先级消费                <span class="cm">│</span><br>
+<span class="cm">└────────────────────────────────────────────────────────────────────┘</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>架构关键词</h4>
+          <div class="badge-row">
+            <span class="badge badge-blue">流式事件</span>
+            <span class="badge badge-purple">并发分区</span>
+            <span class="badge badge-green">取消传播</span>
+            <span class="badge badge-orange">应用层背压</span>
+          </div>
+          <p style="margin-top:12px;">
+            这里的“背压”更接近应用层流量治理：通过 <code>CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY</code>、生成器排空策略、消息优先级和 fallback/discard 机制，避免工具风暴或中断场景把 UI 与执行层拖入失控状态。
+          </p>
+        </div>
+        <div class="card">
+          <h4>分析边界</h4>
+          <p>
+            本文只解释代码中直接可见的结构：类型签名、状态机、函数边界、消息优先级与取消链。不会虚构底层线程池、网络层协议细节或不存在的调度器实现。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="async-generator">
+      <h2><span class="icon">🔄</span> AsyncGenerator 主干</h2>
+      <p class="section-intro">
+        这一架构最关键的事实，是 <code>query()</code> 自身就不是一次性返回值，而是查询全生命周期的异步生成器。它把“模型流事件”、“请求开始信号”、“消息对象”、“墓碑消息”和“工具摘要消息”放进同一条可增量消费的输出流里。
+      </p>
+
+      <div class="card">
+        <h4><code>query()</code> 的精确返回类型</h4>
+        <div class="code-block">
+<span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span>* <span class="fn">query</span>(<br>
+&nbsp;&nbsp;<span class="fn">params</span>: <span class="tp">QueryParams</span>,<br>
+): <span class="tp">AsyncGenerator</span>&lt;<br>
+&nbsp;&nbsp;<span class="tp">StreamEvent</span><br>
+&nbsp;&nbsp;| <span class="tp">RequestStartEvent</span><br>
+&nbsp;&nbsp;| <span class="tp">Message</span><br>
+&nbsp;&nbsp;| <span class="tp">TombstoneMessage</span><br>
+&nbsp;&nbsp;| <span class="tp">ToolUseSummaryMessage</span>,<br>
+&nbsp;&nbsp;<span class="tp">Terminal</span><br>
+&gt;
+        </div>
+        <p style="margin-top:10px;">
+          这一定义非常重要：<code>yield</code> 的是运行中事件流，<code>return</code> 的却是 <code>Terminal</code>。也就是说，调用方通过 <code>for await...of</code> 消费过程，而“终止状态”被保留为生成器完成值，不和中途消息混在一起。
+        </p>
+      </div>
+
+      <div class="card">
+        <h4>为什么说 AsyncGenerator 是“贯穿式模式”</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>层级</th>
+              <th>代码事实</th>
+              <th>架构含义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>查询入口</td>
+              <td><code>query()</code> 返回复合类型的 <code>AsyncGenerator&lt;..., Terminal&gt;</code></td>
+              <td>整个会话轮次天然支持增量输出与中途终止</td>
+            </tr>
+            <tr>
+              <td>工具执行</td>
+              <td><code>runTools()</code> 与 <code>getRemainingResults()</code> 也都以生成器输出更新</td>
+              <td>工具层无需等待“所有工具全部完成”才向上游汇报</td>
+            </tr>
+            <tr>
+              <td>工具函数</td>
+              <td><code>generators.ts</code> 提供 <code>all()</code>、<code>returnValue()</code>、<code>fromArray()</code> 等通用适配器</td>
+              <td>说明生成器不是点状使用，而是被提炼成基础编排原语</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>关键解读：</strong> Claude Code 的查询循环不是“拿到完整 assistant message 后再执行工具”，而是先把模型流、工具执行和结果补全纳入同一条异步可消费管道。这个选择使流式 UI 与工具回流天然兼容。
+      </div>
+    </section>
+
+    <section class="section" id="streaming-executor">
+      <h2><span class="icon">⚙️</span> StreamingToolExecutor</h2>
+      <p class="section-intro">
+        <code>StreamingToolExecutor</code> 是流式工具执行的核心。它并不只负责“执行工具”，还负责把工具状态机、进度消息、已完成结果与等待中结果拆分为两类生成器视图，因此可以在查询主循环里持续轮询已完成更新，同时保留一个“收尾排空”路径。
+      </p>
+
+      <div class="card">
+        <h4>双生成器结果流 + 状态机</h4>
+        <div class="code-block">
+<span class="kw">type</span> <span class="fn">ToolStatus</span> = <span class="str">'queued'</span> | <span class="str">'executing'</span> | <span class="str">'completed'</span> | <span class="str">'yielded'</span><br><br>
+<span class="kw">class</span> <span class="fn">StreamingToolExecutor</span> {<br>
+&nbsp;&nbsp;<span class="fn">getCompletedResults</span>(): <span class="tp">Generator</span>&lt;<span class="tp">MessageUpdate</span>&gt;<br>
+&nbsp;&nbsp;<span class="kw">async</span> *<span class="fn">getRemainingResults</span>(): <span class="tp">AsyncGenerator</span>&lt;<span class="tp">MessageUpdate</span>, <span class="kw">void</span>&gt;<br>
+}<br><br>
+<span class="cm">状态流：</span> <span class="str">'queued'</span> → <span class="str">'executing'</span> → <span class="str">'completed'</span> → <span class="str">'yielded'</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4><code>getCompletedResults()</code></h4>
+          <p>
+            这是同步生成器，职责是把已经完成、且尚未上抛的结果按顺序吐给上层。它更像一种“非阻塞轮询窗口”：如果某些工具已经结束，就立即把 <code>MessageUpdate</code> 交出去；如果没有，就什么也不阻塞地返回。
+          </p>
+        </div>
+        <div class="card">
+          <h4><code>getRemainingResults()</code></h4>
+          <p>
+            这是异步生成器，职责是等待所有仍未收集的结果完成并逐个回流。它用于查询循环收尾、取消后排空、以及 fallback 之后补全缺失的 <code>tool_result</code> 块。
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>为什么是“双通道”而不是单通道</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>运行中轮询</strong><br>主循环可以反复调用 <code>getCompletedResults()</code>，尽快把已完成工具结果送回 UI。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>结束时排空</strong><br>在正常收尾、用户中断或 streaming fallback 后，再用 <code>getRemainingResults()</code> 兜底等待所有必要结果。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>状态闭环</strong><br>只有当结果真正被向上层交付后，状态才进入 <code>'yielded'</code>，这保证了“完成”与“已消费”不是同一个概念。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>架构图：工具状态与消息回流</h4>
+        <div class="code-block">
+<span class="cm">┌─────────┐      start       ┌────────────┐      result ready      ┌────────────┐</span><br>
+<span class="cm">│</span> queued  <span class="cm">├────────────────▶│</span> executing  <span class="cm">├──────────────────────▶│</span> completed  <span class="cm">│</span><br>
+<span class="cm">└─────────┘                 └────────────┘                        └─────┬──────┘</span><br>
+<span class="cm">      │</span> pendingProgress 可先行 yield                                      <span class="cm">│</span><br>
+<span class="cm">      └───────────────────────────────────────────────────────────────────┘</span><br>
+<span class="cm">                                                                        ▼</span><br>
+<span class="cm">                                                                  ┌─────────┐</span><br>
+<span class="cm">                                                                  │ yielded │</span><br>
+<span class="cm">                                                                  └─────────┘</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="orchestration">
+      <h2><span class="icon">🧩</span> <code>runTools()</code> 与并发分区</h2>
+      <p class="section-intro">
+        Claude Code 并不是“所有工具一股脑并行”。<code>toolOrchestration.ts</code> 中的 <code>runTools()</code> 先经过 <code>partitionToolCalls()</code>，把连续的工具调用切成“可安全并发批次”和“必须单独执行的批次”。这说明并发策略来自工具语义，而不是统一线程数配置。
+      </p>
+
+      <div class="card">
+        <h4>核心编排接口</h4>
+        <div class="code-block">
+<span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span>* <span class="fn">runTools</span>(<br>
+&nbsp;&nbsp;<span class="fn">toolUseMessages</span>: <span class="tp">ToolUseBlock</span>[],<br>
+&nbsp;&nbsp;<span class="fn">assistantMessages</span>: <span class="tp">AssistantMessage</span>[],<br>
+&nbsp;&nbsp;<span class="fn">canUseTool</span>: <span class="tp">CanUseToolFn</span>,<br>
+&nbsp;&nbsp;<span class="fn">toolUseContext</span>: <span class="tp">ToolUseContext</span>,<br>
+): <span class="tp">AsyncGenerator</span>&lt;<span class="tp">MessageUpdate</span>, <span class="kw">void</span>&gt;
+        </div>
+        <p style="margin-top:10px;">
+          <code>runTools()</code> 是“无 streaming executor 时”的直接执行入口，但它仍然保留了生成器输出形式，因此与整体流式架构兼容。
+        </p>
+      </div>
+
+      <div class="card">
+        <h4><code>partitionToolCalls()</code> 的语义</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>分区类型</th>
+              <th>判定依据</th>
+              <th>执行方式</th>
+              <th>含义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>并发安全批次</td>
+              <td>工具被标记为 concurrency-safe</td>
+              <td>同一批内并行执行</td>
+              <td>适合读取型、互不修改共享状态的调用</td>
+            </tr>
+            <tr>
+              <td>非并发批次</td>
+              <td>工具不是 concurrency-safe</td>
+              <td>单个批次只放一个工具，串行执行</td>
+              <td>避免 Bash / 编辑 / 写操作相互踩踏</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>并发上限：默认 10</h4>
+          <div class="code-block">
+<span class="kw">function</span> <span class="fn">getMaxToolUseConcurrency</span>(): <span class="tp">number</span> {<br>
+&nbsp;&nbsp;<span class="kw">return</span> (<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="fn">parseInt</span>(<span class="tp">process</span>.env.<span class="fn">CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY</span> || <span class="str">''</span>, <span class="tp">10</span>) || <span class="tp">10</span><br>
+&nbsp;&nbsp;)<br>
+}<br>
+          </div>
+          <p>
+            这不是无限并发，也不是写死在线程池里的系统参数，而是一个清晰暴露给运行环境的应用层限流阈值，默认值为 <strong>10</strong>。
+          </p>
+        </div>
+        <div class="card">
+          <h4>为什么这就是背压的一部分</h4>
+          <p>
+            如果模型一次性产出大量可并发工具调用，<code>partitionToolCalls()</code> 负责先做语义切分，<code>getMaxToolUseConcurrency()</code> 再限制同时在飞数量。这样可以防止工具执行层瞬时爆炸，也避免 UI 端同时面对过量结果流入。
+          </p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>关键事实：</strong> 这里的工具编排明确区分 <code>runTools()</code> 与 <code>partitionToolCalls()</code>。前者是执行入口，后者是安全边界；“并发”并不是默认权利，而是只有被判定为 concurrent-safe 的工具才拥有。
+      </div>
+    </section>
+
+    <section class="section" id="generator-helpers">
+      <h2><span class="icon">🛠️</span> <code>generators.ts</code> 工具链</h2>
+      <p class="section-intro">
+        Claude Code 没有把生成器当成语法糖使用，而是专门抽出 <code>utils/generators.ts</code> 作为编排原语库。这里的辅助函数解释了为什么上层能轻量拼装并发与流式行为，而不需要每个模块都自己重新写 drain / gather / convert 逻辑。
+      </p>
+
+      <div class="card">
+        <h4>四个关键辅助函数</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>签名/角色</th>
+              <th>架构作用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>all&lt;A&gt;()</code></td>
+              <td>并发消费多个 <code>AsyncGenerator</code>，支持 <code>concurrencyCap</code></td>
+              <td>为工具并发提供统一“边跑边产出”的合流器</td>
+            </tr>
+            <tr>
+              <td><code>lastX()</code></td>
+              <td>消耗完整个异步生成器并返回最后一个 yield 值</td>
+              <td>当中间值无关、只关心最终一项时可直接收口</td>
+            </tr>
+            <tr>
+              <td><code>returnValue()</code></td>
+              <td>排空生成器后提取其 return 值</td>
+              <td>把“过程输出”和“最终返回值”分开处理</td>
+            </tr>
+            <tr>
+              <td><code>fromArray&lt;T&gt;()</code></td>
+              <td>把数组适配成异步生成器</td>
+              <td>让非流式源也能接进统一生成器管道</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4><code>all&lt;A&gt;()</code> 的架构意义</h4>
+        <div class="code-block">
+<span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span>* <span class="fn">all</span>&lt;<span class="tp">A</span>&gt;(<br>
+&nbsp;&nbsp;<span class="fn">generators</span>: <span class="tp">AsyncGenerator</span>&lt;<span class="tp">A</span>, <span class="kw">void</span>&gt;[],<br>
+&nbsp;&nbsp;<span class="fn">concurrencyCap</span> = <span class="tp">Infinity</span>,<br>
+): <span class="tp">AsyncGenerator</span>&lt;<span class="tp">A</span>, <span class="kw">void</span>&gt;
+        </div>
+        <p>
+          这不是简单的 <code>Promise.all()</code> 替代品。它保留了“多路输入、单路增量输出”的形态，并把并发上限直接做进原语层。<code>runToolsConcurrently()</code> 使用它，说明 Claude Code 把并发工具执行建模为“多个会不断 yield 的源”，而不是“多个只会 resolve 一次的 promise”。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4><code>returnValue()</code> 与 <code>lastX()</code></h4>
+          <p>
+            这两个函数共同强调了生成器的双重语义：一方面它在运行中持续产出值，另一方面它在结束时还可以返回独立的完成值。<code>query()</code> 返回 <code>Terminal</code>，正是这种分离语义的上层体现。
+          </p>
+        </div>
+        <div class="card">
+          <h4><code>fromArray&lt;T&gt;()</code></h4>
+          <p>
+            这个辅助函数看似简单，但意义很大：它让非流式数据源也能伪装成异步流，从而和流式工具结果、消息流、收尾流程共享同一套消费协议。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="message-queue">
+      <h2><span class="icon">📬</span> <code>messageQueueManager.ts</code></h2>
+      <p class="section-intro">
+        除了模型/工具流本身，Claude Code 还维护一个命令消息队列，用于协调用户输入、通知和系统消息。这个模块值得注意的地方在于：它同时面向 React 订阅模型和非 React 读取模型，因此既有快照语义，也有优先级语义。
+      </p>
+
+      <div class="card">
+        <h4>优先级定义</h4>
+        <div class="code-block">
+<span class="kw">const</span> <span class="fn">PRIORITY_ORDER</span>: <span class="tp">Record</span>&lt;<span class="tp">QueuePriority</span>, <span class="tp">number</span>&gt; = {<br>
+&nbsp;&nbsp;<span class="str">now</span>: <span class="tp">0</span>,<br>
+&nbsp;&nbsp;<span class="str">next</span>: <span class="tp">1</span>,<br>
+&nbsp;&nbsp;<span class="str">later</span>: <span class="tp">2</span>,<br>
+}
+        </div>
+        <p>
+          这三档优先级说明命令队列不是 FIFO 的纯日志，而是可以把紧急动作、普通输入和延后通知分层消费。它和工具并发限流一起，构成 UI 侧的应用层背压治理。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>React 集成：<code>useSyncExternalStore</code></h4>
+          <p>
+            模块导出 <code>subscribeToCommandQueue</code> 与 <code>getCommandQueueSnapshot()</code>，正适合 React 通过 <code>useSyncExternalStore</code> 订阅外部状态。这里的关键不是 Hook 名字本身，而是它采用“可订阅 + 不可变快照”模式，让界面层能可靠感知队列变更。
+          </p>
+        </div>
+        <div class="card">
+          <h4>非 React 消费</h4>
+          <p>
+            同一模块又保留了直接读取和出队接口，说明这套队列不是纯 UI store，而是跨终端界面、打印层和命令处理层共享的基础设施。
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>优先级 + 快照 = 可控的 UI 流</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>写入时定优先级</strong><br><code>now</code>、<code>next</code>、<code>later</code> 把消息分成不同紧迫等级。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>读取时按优先级出队</strong><br>消费端不必先扫完整条队列，最高优先级项先被处理。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>React 用快照订阅</strong><br><code>useSyncExternalStore</code> 风格接入可减少竞态，保证渲染看到一致状态。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="abort-hierarchy">
+      <h2><span class="icon">🛑</span> 三层取消链</h2>
+      <p class="section-intro">
+        Claude Code 的取消模型并非单一 <code>AbortController</code>。在工具执行流中，至少可以观察到三层结构：根控制器、兄弟级控制器和每个工具自己的控制器。它们的关系决定了“用户中断”、“某个工具失败”与“某个工具自行 abort”分别传播到哪里。
+      </p>
+
+      <div class="card">
+        <h4>三层层级结构</h4>
+        <div class="code-block">
+<span class="cm">root</span>  <span class="fn">toolUseContext.abortController</span><br>
+&nbsp;&nbsp;└─ <span class="cm">layer 2</span>  <span class="fn">siblingAbortController</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span class="cm">layer 3</span>  <span class="fn">toolAbortController</span> <span class="cm">(per tool)</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>Root：全局工具轮次取消</h4>
+          <p>
+            <code>toolUseContext.abortController</code> 代表整个工具使用上下文的根中断信号。用户中断、上层查询退出等事件最终都会体现在这一层上。
+          </p>
+        </div>
+        <div class="card">
+          <h4>Sibling：同批工具的联动取消</h4>
+          <p>
+            <code>siblingAbortController</code> 作为根的子控制器，主要用于在一个工具出错后终止同批次或相关兄弟工具，而不是立即等同于整个会话根取消。
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>Per-tool 控制器的意义</h4>
+        <p>
+          每个工具还会创建自己的 <code>toolAbortController</code>。这样做的效果是：单个工具可以拥有本地 abort 生命周期，同时又能在需要时把原因上抛；但某些特殊原因（例如兄弟错误）不会无条件冒泡成根级取消，避免一次局部联动把整轮状态错误放大。
+        </p>
+      </div>
+
+      <div class="card">
+        <h4>架构图：取消传播方向</h4>
+        <div class="code-block">
+<span class="cm">用户中断 / 查询结束</span><br>
+<span class="cm">        │</span><br>
+<span class="cm">        ▼</span><br>
+<span class="fn">toolUseContext.abortController</span><br>
+<span class="cm">        │  向下传播</span><br>
+<span class="cm">        ▼</span><br>
+<span class="fn">siblingAbortController</span><br>
+<span class="cm">        │  再向下传播</span><br>
+<span class="cm">        ▼</span><br>
+<span class="fn">toolAbortController</span> <span class="cm">(每个工具)</span><br><br>
+<span class="cm">某个工具本地 abort</span><br>
+<span class="cm">        │</span><br>
+<span class="cm">        ├─ 普通原因：可向上冒泡到 root</span><br>
+<span class="cm">        └─ sibling_error：用于兄弟联动，不等同于全局失败</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="fallback">
+      <h2><span class="icon">🚨</span> 回退、丢弃与背压</h2>
+      <p class="section-intro">
+        真正体现这套架构成熟度的，不是“成功路径”，而是它如何处理 Bash 错误、用户中断，以及 streaming fallback 后的丢弃状态。代码中的 <code>discarded</code> 概念与 synthetic error message 生成逻辑，说明系统非常在意保持 <code>tool_use</code> / <code>tool_result</code> 对齐，不让失败尝试污染后续轮次。
+      </p>
+
+      <div class="card">
+        <h4>Bash 错误的兄弟中止语义</h4>
+        <p>
+          在 <code>StreamingToolExecutor</code> 中，只有 Bash 错误会触发 <code>siblingAbortController.abort('sibling_error')</code>。这一点非常有辨识度：并不是任何工具失败都连坐取消，而是只有像 Bash 这类天然存在命令链依赖的工具，其失败才被视为足以让兄弟工具失去继续执行意义。
+        </p>
+        <div class="badge-row">
+          <span class="badge badge-red">Bash error → sibling_error</span>
+          <span class="badge badge-green">独立读取工具失败 ≠ 全部取消</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>用户中断处理</h4>
+          <p>
+            当根 abort reason 为 <code>'interrupt'</code> 时，执行器会根据工具自身的 interrupt behavior 决定是返回 <code>'user_interrupted'</code> 合成错误，还是允许某些工具保持 block 行为。说明“按 ESC”并不是粗暴终止一切，而是尊重工具类型差异。
+          </p>
+        </div>
+        <div class="card">
+          <h4>Streaming fallback / discarded</h4>
+          <p>
+            当流式尝试被放弃时，执行器会进入 <code>discarded</code> 状态，并把后续中止原因解释为 <code>'streaming_fallback'</code>。其目的不是隐藏错误，而是生成合成结果，避免旧尝试里的工具结果悬空或错配到新一轮流中。
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>失败路径如何保持消息一致性</h4>
+        <div class="code-block">
+<span class="cm">正常路径：</span><br>
+<span class="fn">tool_use</span> → <span class="fn">executeTool</span> → <span class="fn">tool_result</span><br><br>
+<span class="cm">用户中断：</span><br>
+<span class="fn">tool_use</span> → root abort(<span class="str">'interrupt'</span>) → synthetic <span class="fn">tool_result</span> (<span class="str">'user_interrupted'</span>)<br><br>
+<span class="cm">Bash 兄弟失败：</span><br>
+<span class="fn">bash tool error</span> → sibling abort(<span class="str">'sibling_error'</span>) → 兄弟工具生成取消结果<br><br>
+<span class="cm">streaming fallback：</span><br>
+<span class="fn">discard()</span> → <span class="fn">discarded = true</span> → synthetic <span class="fn">tool_result</span> (<span class="str">'streaming_fallback'</span>)
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>把这些事实放回整体架构中的解释</h4>
+        <ul class="note-list">
+          <li>并发上限 <code>10</code> 控制的是工具风暴的入口压力。</li>
+          <li><code>partitionToolCalls()</code> 防止语义不安全的工具并行。</li>
+          <li><code>getCompletedResults()</code> / <code>getRemainingResults()</code> 保证运行中可增量、结束时可排空。</li>
+          <li><code>messageQueueManager</code> 的 <code>now / next / later</code> 让 UI 消费优先级化。</li>
+          <li>三层 <code>AbortController</code> 让取消既可联动，又不至于无限扩大。</li>
+          <li><code>discarded</code> 与 synthetic result 则保证失败路径依旧满足消息配对约束。</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <strong>最终结论：</strong> Claude Code 的流式与并发架构，本质上是一个“生成器优先”的应用层控制面。<code>AsyncGenerator</code> 负责统一增量输出协议，<code>runTools()</code> 与 <code>StreamingToolExecutor</code> 负责把工具执行转成可限流的流，消息队列负责优先级消费，而三层取消链与 discarded/fallback 机制则负责把失败路径也收束到一致的消息模型内。
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a class="footer-back" href="index.html">← 返回深度报告导航</a>
+      <div class="footer-meta">
+        基于源码文件 <code>restored-src/src/query.ts</code>、<code>restored-src/src/services/tools/StreamingToolExecutor.ts</code>、
+        <code>restored-src/src/services/tools/toolOrchestration.ts</code>、<code>restored-src/src/utils/generators.ts</code>、
+        <code>restored-src/src/utils/messageQueueManager.ts</code> 与中断相关辅助模块整理。<br>
+        报告主题：<code>⚡ 流式处理与并发架构</code>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  var links = Array.prototype.slice.call(document.querySelectorAll('.sidebar a'));
+  var sections = links
+    .map(function (link) {
+      var id = link.getAttribute('href');
+      return id ? document.querySelector(id) : null;
+    })
+    .filter(Boolean);
+
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+    });
+  }
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var id = '#' + entry.target.id;
+      links.forEach(function (link) {
+        link.classList.toggle('active', link.getAttribute('href') === id);
+      });
+    });
+  }, {
+    rootMargin: '-20% 0px -65% 0px',
+    threshold: 0.1
+  });
+
+  sections.forEach(function (section) { observer.observe(section); });
+
+  links.forEach(function (link) {
+    link.addEventListener('click', function () {
+      if (window.innerWidth <= 900 && sidebar) {
+        sidebar.classList.remove('open');
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

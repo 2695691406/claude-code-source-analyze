@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code v2.1.88 深度技术审计 — 导航中心</title>
+<style>
+/* ============================================================
+   CSS Variables — GitHub Dark Theme
+   ============================================================ */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   Custom Scrollbar
+   ============================================================ */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* ============================================================
+   Particle Background
+   ============================================================ */
+.particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  opacity: 0;
+}
+
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+
+.particle:nth-child(1)  { width: 3px; height: 3px; left:  5%; background: var(--accent-blue);   animation-duration: 18s; animation-delay: 0s;    }
+.particle:nth-child(2)  { width: 2px; height: 2px; left: 12%; background: var(--accent-purple); animation-duration: 22s; animation-delay: 1.5s;  }
+.particle:nth-child(3)  { width: 4px; height: 4px; left: 20%; background: var(--accent-green);  animation-duration: 15s; animation-delay: 3s;    }
+.particle:nth-child(4)  { width: 2px; height: 2px; left: 28%; background: var(--accent-cyan);   animation-duration: 25s; animation-delay: 0.8s;  }
+.particle:nth-child(5)  { width: 3px; height: 3px; left: 35%; background: var(--accent-pink);   animation-duration: 20s; animation-delay: 5s;    }
+.particle:nth-child(6)  { width: 2px; height: 2px; left: 42%; background: var(--accent-orange); animation-duration: 17s; animation-delay: 2.2s;  }
+.particle:nth-child(7)  { width: 4px; height: 4px; left: 50%; background: var(--accent-yellow); animation-duration: 23s; animation-delay: 4s;    }
+.particle:nth-child(8)  { width: 3px; height: 3px; left: 58%; background: var(--accent-red);    animation-duration: 19s; animation-delay: 1s;    }
+.particle:nth-child(9)  { width: 2px; height: 2px; left: 65%; background: var(--accent-blue);   animation-duration: 21s; animation-delay: 6s;    }
+.particle:nth-child(10) { width: 3px; height: 3px; left: 72%; background: var(--accent-purple); animation-duration: 16s; animation-delay: 3.5s;  }
+.particle:nth-child(11) { width: 4px; height: 4px; left: 78%; background: var(--accent-green);  animation-duration: 24s; animation-delay: 2s;    }
+.particle:nth-child(12) { width: 2px; height: 2px; left: 83%; background: var(--accent-cyan);   animation-duration: 14s; animation-delay: 7s;    }
+.particle:nth-child(13) { width: 3px; height: 3px; left: 88%; background: var(--accent-pink);   animation-duration: 20s; animation-delay: 0.5s;  }
+.particle:nth-child(14) { width: 2px; height: 2px; left: 92%; background: var(--accent-orange); animation-duration: 18s; animation-delay: 4.5s;  }
+.particle:nth-child(15) { width: 4px; height: 4px; left: 96%; background: var(--accent-yellow); animation-duration: 22s; animation-delay: 1.8s;  }
+.particle:nth-child(16) { width: 3px; height: 3px; left:  2%; background: var(--accent-red);    animation-duration: 11s; animation-delay: 5.5s;  }
+
+/* ============================================================
+   Main Container
+   ============================================================ */
+.main-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ============================================================
+   Hero Section
+   ============================================================ */
+.hero {
+  text-align: center;
+  padding: 100px 0 60px;
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  width: 600px; height: 600px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(88,166,255,0.08) 0%, rgba(188,140,255,0.04) 40%, transparent 70%);
+  pointer-events: none;
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+
+@keyframes headerGlow {
+  0%   { transform: translateX(-50%) scale(1); opacity: 0.8; }
+  100% { transform: translateX(-50%) scale(1.15); opacity: 1; }
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 6px 18px;
+  background: rgba(88, 166, 255, 0.1);
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: var(--accent-blue);
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+
+.hero-title {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 6s ease-in-out infinite alternate;
+  background-size: 200% 200%;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+.hero-subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  color: var(--text-secondary);
+  max-width: 640px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+.hero-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: 2px;
+  margin: 40px auto 0;
+}
+
+/* ============================================================
+   Fade-In Scroll Animation
+   ============================================================ */
+.fade-section {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.fade-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   Section Titles
+   ============================================================ */
+.section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.section-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.section-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* ============================================================
+   Statistics Dashboard
+   ============================================================ */
+.stats-section {
+  padding: 20px 0 60px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 28px 16px;
+  text-align: center;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.stat-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-4px);
+  box-shadow: var(--glow-blue);
+}
+
+.stat-card:hover::before { opacity: 1; }
+
+.stat-card:nth-child(1)::before { background: var(--gradient-primary); }
+.stat-card:nth-child(2)::before { background: var(--gradient-green); }
+.stat-card:nth-child(3)::before { background: var(--gradient-warm); }
+.stat-card:nth-child(4)::before { background: var(--gradient-cyan); }
+
+.stat-card:nth-child(1):hover { box-shadow: var(--glow-blue); }
+.stat-card:nth-child(2):hover { box-shadow: var(--glow-green); }
+.stat-card:nth-child(3):hover { box-shadow: 0 0 20px rgba(240, 136, 62, 0.3); }
+.stat-card:nth-child(4):hover { box-shadow: 0 0 20px rgba(118, 228, 247, 0.3); }
+
+.stat-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.stat-card:nth-child(1) .stat-number {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-card:nth-child(2) .stat-number {
+  background: var(--gradient-green);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-card:nth-child(3) .stat-number {
+  background: var(--gradient-warm);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-card:nth-child(4) .stat-number {
+  background: var(--gradient-cyan);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   Navigation Cards Grid
+   ============================================================ */
+.nav-section {
+  padding: 40px 0 60px;
+}
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.nav-card {
+  display: block;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.nav-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, transparent 60%, rgba(88,166,255,0.04) 100%);
+  pointer-events: none;
+}
+
+.nav-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(88,166,255,0.15), var(--glow-blue);
+}
+
+.nav-card:hover::before { opacity: 1; }
+
+/* Per-card gradient top bar colors */
+.nav-card:nth-child(1)::before { background: var(--gradient-primary); }
+.nav-card:nth-child(2)::before { background: var(--gradient-green); }
+.nav-card:nth-child(3)::before { background: var(--gradient-warm); }
+.nav-card:nth-child(4)::before { background: var(--gradient-pink); }
+.nav-card:nth-child(5)::before { background: var(--gradient-cyan); }
+.nav-card:nth-child(6)::before { background: linear-gradient(135deg, #f5d547 0%, #f0883e 100%); }
+.nav-card:nth-child(7)::before { background: linear-gradient(135deg, #58a6ff 0%, #7ee787 100%); }
+.nav-card:nth-child(8)::before { background: linear-gradient(135deg, #bc8cff 0%, #f778ba 100%); }
+.nav-card:nth-child(9)::before { background: linear-gradient(135deg, #ff7b72 0%, #f0883e 100%); }
+
+/* Per-card hover glows */
+.nav-card:nth-child(1):hover { box-shadow: 0 8px 32px rgba(88,166,255,0.15), var(--glow-blue); }
+.nav-card:nth-child(2):hover { box-shadow: 0 8px 32px rgba(126,231,135,0.15), var(--glow-green); }
+.nav-card:nth-child(3):hover { box-shadow: 0 8px 32px rgba(240,136,62,0.15), 0 0 20px rgba(240,136,62,0.3); }
+.nav-card:nth-child(4):hover { box-shadow: 0 8px 32px rgba(247,120,186,0.15), 0 0 20px rgba(247,120,186,0.3); }
+.nav-card:nth-child(5):hover { box-shadow: 0 8px 32px rgba(118,228,247,0.15), 0 0 20px rgba(118,228,247,0.3); }
+.nav-card:nth-child(6):hover { box-shadow: 0 8px 32px rgba(245,213,71,0.15), 0 0 20px rgba(245,213,71,0.3); }
+.nav-card:nth-child(7):hover { box-shadow: 0 8px 32px rgba(88,166,255,0.15), var(--glow-blue); }
+.nav-card:nth-child(8):hover { box-shadow: 0 8px 32px rgba(188,140,255,0.15), var(--glow-purple); }
+.nav-card:nth-child(9):hover { box-shadow: 0 8px 32px rgba(255,123,114,0.15), 0 0 20px rgba(255,123,114,0.3); }
+
+.nav-card-icon {
+  font-size: 2rem;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.nav-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.nav-card-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  line-height: 1.5;
+}
+
+.nav-card-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+
+.nav-card:nth-child(1) .nav-card-arrow { color: var(--accent-blue); }
+.nav-card:nth-child(2) .nav-card-arrow { color: var(--accent-green); }
+.nav-card:nth-child(3) .nav-card-arrow { color: var(--accent-orange); }
+.nav-card:nth-child(4) .nav-card-arrow { color: var(--accent-pink); }
+.nav-card:nth-child(5) .nav-card-arrow { color: var(--accent-cyan); }
+.nav-card:nth-child(6) .nav-card-arrow { color: var(--accent-yellow); }
+.nav-card:nth-child(7) .nav-card-arrow { color: var(--accent-green); }
+.nav-card:nth-child(8) .nav-card-arrow { color: var(--accent-purple); }
+.nav-card:nth-child(9) .nav-card-arrow { color: var(--accent-red); }
+
+.nav-card:hover .nav-card-arrow {
+  gap: 12px;
+  transform: translateX(4px);
+}
+
+/* ============================================================
+   Tech Stack Radar
+   ============================================================ */
+.tech-section {
+  padding: 40px 0 80px;
+}
+
+.tech-radar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.tech-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: all var(--transition);
+  cursor: default;
+}
+
+.tech-badge:hover {
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+  transform: translateY(-2px);
+}
+
+.tech-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.tech-icon.ts    { background: #3178c6; }
+.tech-icon.bun   { background: #fbf0df; color: #000; }
+.tech-icon.react { background: #61dafb; color: #20232a; }
+.tech-icon.ink   { background: var(--accent-green); color: #000; }
+.tech-icon.yoga  { background: var(--accent-purple); }
+.tech-icon.zod   { background: #3068b7; }
+.tech-icon.cmd   { background: var(--accent-orange); color: #000; }
+.tech-icon.tree  { background: var(--accent-cyan); color: #000; }
+
+/* Per-badge hover glow */
+.tech-badge:nth-child(1):hover { border-color: #3178c6; box-shadow: 0 0 20px rgba(49,120,198,0.3); }
+.tech-badge:nth-child(2):hover { border-color: #fbf0df; box-shadow: 0 0 20px rgba(251,240,223,0.2); }
+.tech-badge:nth-child(3):hover { border-color: #61dafb; box-shadow: 0 0 20px rgba(97,218,251,0.3); }
+.tech-badge:nth-child(4):hover { border-color: var(--accent-green); box-shadow: var(--glow-green); }
+.tech-badge:nth-child(5):hover { border-color: var(--accent-purple); box-shadow: var(--glow-purple); }
+.tech-badge:nth-child(6):hover { border-color: #3068b7; box-shadow: 0 0 20px rgba(48,104,183,0.3); }
+.tech-badge:nth-child(7):hover { border-color: var(--accent-orange); box-shadow: 0 0 20px rgba(240,136,62,0.3); }
+.tech-badge:nth-child(8):hover { border-color: var(--accent-cyan); box-shadow: 0 0 20px rgba(118,228,247,0.3); }
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 20px;
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all var(--transition);
+  margin-bottom: 20px;
+}
+
+.footer-back:hover {
+  background: rgba(88,166,255,0.15);
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+  transform: translateY(-2px);
+}
+
+.footer-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 16px;
+  line-height: 1.8;
+}
+
+.footer-meta code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: var(--accent-cyan);
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 960px) {
+  .nav-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .nav-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero {
+    padding: 70px 0 40px;
+  }
+
+  .hero-title {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .nav-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 20px 12px;
+  }
+
+  .stat-number {
+    font-size: 1.6rem;
+  }
+
+  .main-container {
+    padding: 0 16px;
+  }
+
+  .tech-radar {
+    gap: 10px;
+  }
+
+  .tech-badge {
+    padding: 8px 16px;
+    font-size: 0.82rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     Particle Background
+     ============================================================ -->
+<div class="particles">
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+</div>
+
+<!-- ============================================================
+     Main Container
+     ============================================================ -->
+<div class="main-container">
+
+  <!-- ========================================================
+       Hero Section
+       ======================================================== -->
+  <section class="hero">
+    <span class="hero-badge">🔬 Deep Technical Audit · v2.1.88</span>
+    <h1 class="hero-title">Claude Code v2.1.88 深度技术审计</h1>
+    <p class="hero-subtitle">基于 512K 行 TypeScript 源码的全面逆向工程分析</p>
+    <hr class="hero-divider">
+  </section>
+
+  <!-- ========================================================
+       Statistics Dashboard
+       ======================================================== -->
+  <section class="stats-section fade-section">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <h2 class="section-title">项目全景数据</h2>
+      <p class="section-desc">Claude Code 代码库核心统计指标</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-icon">📁</span>
+        <span class="stat-number">1,884</span>
+        <span class="stat-label">个源码文件</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">📝</span>
+        <span class="stat-number">512,000+</span>
+        <span class="stat-label">行代码</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🔧</span>
+        <span class="stat-number">43+</span>
+        <span class="stat-label">内置工具</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🧩</span>
+        <span class="stat-number">35</span>
+        <span class="stat-label">核心模块</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       Navigation Cards Grid
+       ======================================================== -->
+  <section class="nav-section fade-section">
+    <div class="section-header">
+      <span class="section-icon">📑</span>
+      <h2 class="section-title">深度分析报告</h2>
+      <p class="section-desc">九大维度全面解构 Claude Code 内部实现</p>
+    </div>
+
+    <div class="nav-grid">
+
+      <!-- Card 1 — QueryEngine -->
+      <a href="query-engine.html" class="nav-card">
+        <span class="nav-card-icon">🔍</span>
+        <div class="nav-card-title">QueryEngine 核心引擎逆向</div>
+        <div class="nav-card-sub">46K行状态机 · 流式管道 · Token聚合</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 2 — Terminal UI -->
+      <a href="terminal-ui.html" class="nav-card">
+        <span class="nav-card-icon">🎨</span>
+        <div class="nav-card-title">终端UI渲染引擎</div>
+        <div class="nav-card-sub">React Reconciler · Yoga布局 · 145组件</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 3 — Security Architecture -->
+      <a href="security-architecture.html" class="nav-card">
+        <span class="nav-card-icon">🛡️</span>
+        <div class="nav-card-title">安全架构全景审计</div>
+        <div class="nav-card-sub">6层权限链 · 23注入检测 · Feature Gate</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 4 — Memory System -->
+      <a href="memory-system.html" class="nav-card">
+        <span class="nav-card-icon">🧠</span>
+        <div class="nav-card-title">三层自愈记忆系统</div>
+        <div class="nav-card-sub">MEMORY.md索引 · SessionMemory · MagicDocs</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 5 — MCP Protocol -->
+      <a href="mcp-protocol.html" class="nav-card">
+        <span class="nav-card-icon">🔌</span>
+        <div class="nav-card-title">MCP协议与扩展架构</div>
+        <div class="nav-card-sub">Server审批 · Plugin热加载 · OAuth集成</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 6 — Streaming Pipeline -->
+      <a href="streaming-pipeline.html" class="nav-card">
+        <span class="nav-card-icon">⚡</span>
+        <div class="nav-card-title">流式处理与并发架构</div>
+        <div class="nav-card-sub">AsyncGenerator · 消息总线 · 背压控制</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 7 — Data Flow & State -->
+      <a href="data-flow-state.html" class="nav-card">
+        <span class="nav-card-icon">📊</span>
+        <div class="nav-card-title">数据流与状态管理</div>
+        <div class="nav-card-sub">9个Context · 历史压缩 · 迁移系统</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 8 — Hidden Features -->
+      <a href="hidden-features.html" class="nav-card">
+        <span class="nav-card-icon">🔮</span>
+        <div class="nav-card-title">隐藏功能与彩蛋</div>
+        <div class="nav-card-sub">虚拟宠物 · 卧底模式 · Feature Flag</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+      <!-- Card 9 — Performance & Resilience -->
+      <a href="performance-resilience.html" class="nav-card">
+        <span class="nav-card-icon">🚀</span>
+        <div class="nav-card-title">性能优化与韧性</div>
+        <div class="nav-card-sub">LRU缓存 · 指数退避 · 模型降级</div>
+        <span class="nav-card-arrow">查看报告 →</span>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ========================================================
+       Tech Stack Radar
+       ======================================================== -->
+  <section class="tech-section fade-section">
+    <div class="section-header">
+      <span class="section-icon">⚙️</span>
+      <h2 class="section-title">技术栈雷达</h2>
+      <p class="section-desc">Claude Code 核心依赖技术矩阵</p>
+    </div>
+
+    <div class="tech-radar">
+      <div class="tech-badge">
+        <span class="tech-icon ts">TS</span>
+        TypeScript
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon bun">🥟</span>
+        Bun Runtime
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon react">⚛</span>
+        React
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon ink">🖊</span>
+        Custom Ink
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon yoga">Y</span>
+        Yoga Layout
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon zod">Z</span>
+        Zod
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon cmd">C</span>
+        Commander.js
+      </div>
+      <div class="tech-badge">
+        <span class="tech-icon tree">🌳</span>
+        Tree-sitter
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       Footer
+       ======================================================== -->
+  <footer class="footer fade-section">
+    <a href="../reports/index.html" class="footer-back">← 返回总报告导航中心</a>
+    <div class="footer-meta">
+      Claude Code <code>v2.1.88</code> · 深度逆向工程分析 · 仅供技术研究用途<br>
+      基于公开 npm 包静态分析 · 未涉及任何非公开资源
+    </div>
+  </footer>
+
+</div>
+
+<!-- ============================================================
+     Scroll Fade-In Script
+     ============================================================ -->
+<script>
+(function () {
+  var sections = document.querySelectorAll('.fade-section');
+
+  function revealOnScroll() {
+    var windowBottom = window.innerHeight + window.scrollY;
+    sections.forEach(function (section) {
+      var sectionTop = section.getBoundingClientRect().top + window.scrollY;
+      if (windowBottom > sectionTop + 80) {
+        section.classList.add('visible');
+      }
+    });
+  }
+
+  // Initial check (elements already in viewport)
+  revealOnScroll();
+
+  // Throttled scroll listener
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (!ticking) {
+      window.requestAnimationFrame(function () {
+        revealOnScroll();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

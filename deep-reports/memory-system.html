@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧠 三层自愈记忆系统 - Claude Code v2.1.88 深度技术审计</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a { color: var(--accent-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+.particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  opacity: 0;
+}
+
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+
+.particle:nth-child(1)  { width: 3px; height: 3px; left:  6%; background: var(--accent-blue);   animation-duration: 18s; animation-delay: 0s;   }
+.particle:nth-child(2)  { width: 2px; height: 2px; left: 15%; background: var(--accent-purple); animation-duration: 22s; animation-delay: 1.5s; }
+.particle:nth-child(3)  { width: 4px; height: 4px; left: 24%; background: var(--accent-green);  animation-duration: 15s; animation-delay: 3s;   }
+.particle:nth-child(4)  { width: 2px; height: 2px; left: 33%; background: var(--accent-cyan);   animation-duration: 25s; animation-delay: 0.8s; }
+.particle:nth-child(5)  { width: 3px; height: 3px; left: 42%; background: var(--accent-pink);   animation-duration: 20s; animation-delay: 5s;   }
+.particle:nth-child(6)  { width: 2px; height: 2px; left: 51%; background: var(--accent-orange); animation-duration: 17s; animation-delay: 2.2s; }
+.particle:nth-child(7)  { width: 4px; height: 4px; left: 60%; background: var(--accent-blue);   animation-duration: 23s; animation-delay: 4s;   }
+.particle:nth-child(8)  { width: 3px; height: 3px; left: 69%; background: var(--accent-purple); animation-duration: 19s; animation-delay: 1s;   }
+.particle:nth-child(9)  { width: 2px; height: 2px; left: 78%; background: var(--accent-green);  animation-duration: 21s; animation-delay: 6s;   }
+.particle:nth-child(10) { width: 3px; height: 3px; left: 85%; background: var(--accent-cyan);   animation-duration: 16s; animation-delay: 3.5s; }
+.particle:nth-child(11) { width: 4px; height: 4px; left: 92%; background: var(--accent-pink);   animation-duration: 24s; animation-delay: 2s;   }
+.particle:nth-child(12) { width: 2px; height: 2px; left: 98%; background: var(--accent-orange); animation-duration: 14s; animation-delay: 7s;   }
+
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.top-nav a { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.top-nav .title {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-left: auto;
+}
+
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--glow-blue);
+  transition: var(--transition);
+}
+.sidebar-toggle:hover { transform: scale(1.08); }
+
+.layout {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  width: 270px;
+  position: sticky;
+  top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+}
+.sidebar a {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+  transition: var(--transition);
+  border-left: 2px solid transparent;
+}
+.sidebar a:hover,
+.sidebar a.active {
+  color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.08);
+  text-decoration: none;
+  border-left-color: var(--accent-blue);
+}
+
+.main { flex: 1; padding: 0 40px 60px; min-width: 0; }
+
+.hero {
+  text-align: center;
+  padding: 48px 0 36px;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, rgba(88,166,255,0.08) 0%, rgba(188,140,255,0.05) 42%, transparent 70%);
+  pointer-events: none;
+  animation: headerGlow 8s ease-in-out infinite;
+}
+@keyframes headerGlow {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 1; transform: translateX(-50%) scale(1.14); }
+}
+.hero-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--accent-blue);
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 6s ease-in-out infinite;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.hero-sub {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 760px;
+  margin: 0 auto 24px;
+  line-height: 1.8;
+}
+.hero-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--gradient-primary);
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 32px 0 40px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-highlight);
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-card:nth-child(1)::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
+.stat-card:nth-child(2)::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink)); }
+.stat-card:nth-child(3)::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+.stat-card:nth-child(4)::before { background: linear-gradient(90deg, var(--accent-orange), var(--accent-yellow)); }
+.stat-card:nth-child(1):hover { box-shadow: 0 4px 24px rgba(88, 166, 255, 0.15); }
+.stat-card:nth-child(2):hover { box-shadow: 0 4px 24px rgba(188, 140, 255, 0.15); }
+.stat-card:nth-child(3):hover { box-shadow: 0 4px 24px rgba(126, 231, 135, 0.15); }
+.stat-card:nth-child(4):hover { box-shadow: 0 4px 24px rgba(240, 136, 62, 0.15); }
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.stat-card:nth-child(1) .stat-value { color: var(--accent-blue); }
+.stat-card:nth-child(2) .stat-value { color: var(--accent-purple); }
+.stat-card:nth-child(3) .stat-value { color: var(--accent-green); }
+.stat-card:nth-child(4) .stat-value { color: var(--accent-orange); }
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.section {
+  margin-bottom: 48px;
+  animation: fadeUp 0.5s ease;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)) 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h2 .icon { font-size: 28px; }
+h3 {
+  font-size: 18px;
+  color: var(--accent-blue);
+  margin: 16px 0 10px;
+}
+.section-intro {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: var(--transition);
+}
+.card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(88, 166, 255, 0.1);
+}
+.card h4 {
+  color: var(--accent-purple);
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+.card p + p { margin-top: 10px; }
+
+.code-block {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.code-block .kw  { color: var(--accent-purple); }
+.code-block .fn  { color: var(--accent-blue); }
+.code-block .str { color: var(--accent-green); }
+.code-block .cm  { color: var(--text-secondary); }
+.code-block .num { color: var(--accent-orange); }
+.code-block .tp  { color: var(--accent-cyan); }
+.code-block .op  { color: var(--accent-red); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 2px;
+}
+.badge-blue   { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+.badge-purple { background: rgba(188, 140, 255, 0.15); color: var(--accent-purple); }
+.badge-green  { background: rgba(126, 231, 135, 0.15); color: var(--accent-green); }
+.badge-orange { background: rgba(240, 136, 62, 0.15); color: var(--accent-orange); }
+.badge-red    { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+.badge-cyan   { background: rgba(118, 228, 247, 0.15); color: var(--accent-cyan); }
+.badge-pink   { background: rgba(247, 120, 186, 0.15); color: var(--accent-pink); }
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.compare-table th,
+.compare-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  font-size: 14px;
+  vertical-align: top;
+}
+.compare-table th {
+  background: var(--bg-tertiary);
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+.compare-table td { background: var(--bg-secondary); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.callout {
+  border-left: 3px solid var(--accent-blue);
+  background: rgba(88, 166, 255, 0.06);
+  padding: 14px 16px;
+  border-radius: 0 10px 10px 0;
+  margin: 14px 0;
+  color: var(--text-secondary);
+}
+.callout.warn {
+  border-left-color: var(--accent-orange);
+  background: rgba(240, 136, 62, 0.08);
+}
+.callout.safe {
+  border-left-color: var(--accent-green);
+  background: rgba(126, 231, 135, 0.08);
+}
+.mono { font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; }
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.pipeline::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(var(--accent-blue), var(--accent-purple), var(--accent-green));
+}
+.pipe-step {
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+  position: relative;
+}
+.pipe-num {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+.pipe-content { flex: 1; padding-top: 8px; }
+.pipe-content strong { color: var(--accent-blue); }
+.footer {
+  text-align: center;
+  padding: 40px 20px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 40px;
+}
+.footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--accent-blue);
+  margin-bottom: 8px;
+}
+.footer-back:hover { text-decoration: underline; }
+.footer-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-top: 12px;
+}
+.footer-meta code {
+  color: var(--accent-cyan);
+  background: rgba(118, 228, 247, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+ul { padding-left: 20px; }
+li { margin-bottom: 6px; font-size: 14px; }
+
+@media (max-width: 900px) {
+  .sidebar-toggle { display: block; }
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    position: fixed;
+    top: 52px;
+    left: -100%;
+    height: calc(100vh - 52px);
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    z-index: 150;
+    transition: left 0.3s;
+  }
+  .sidebar.open { left: 0; }
+  .main { padding: 0 16px 60px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid, .grid-2 { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 28px; }
+}
+@media (max-width: 560px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-value { font-size: 22px; }
+  .top-nav .title { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="particles">
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+</div>
+
+<nav class="top-nav">
+  <a href="index.html">← 返回导航中心</a>
+  <span class="title">🧠 三层自愈记忆系统</span>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="切换目录">☰</button>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a href="#overview">1. 总体架构</a>
+    <a href="#types">2. 四种记忆类型</a>
+    <a href="#modules">3. 八个核心模块</a>
+    <a href="#scan">4. 分层扫描与入口治理</a>
+    <a href="#matching">5. 相关性匹配</a>
+    <a href="#session-memory">6. SessionMemory 阈值</a>
+    <a href="#self-healing">7. 自愈、陈旧控制与剪枝边界</a>
+    <a href="#flow">8. 端到端工作流</a>
+  </aside>
+
+  <main class="main">
+    <section class="hero">
+      <div class="hero-badge">Claude Code v2.1.88 · Memory Architecture</div>
+      <h1>🧠 三层自愈记忆系统</h1>
+      <p class="hero-sub">
+        Claude Code 的记忆并不是单一缓存，而是由<strong>持久化文件记忆</strong>、<strong>查询时相关性召回</strong>与<strong>会话级摘要记忆</strong>组成的三层协作体系。它既强调长期可追溯，又通过入口截断、过时提醒、重复抑制与阈值触发，形成一种“能发现问题、提示修复、避免持续恶化”的架构级自愈能力。
+      </p>
+      <div class="hero-divider"></div>
+    </section>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">4 种</div>
+        <div class="stat-label">记忆类型</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">8 个</div>
+        <div class="stat-label">核心模块</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">25KB</div>
+        <div class="stat-label">入口上限</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">自动</div>
+        <div class="stat-label">扫描发现</div>
+      </div>
+    </div>
+
+    <section class="section" id="overview">
+      <h2><span class="icon">🏗️</span> 总体架构</h2>
+      <p class="section-intro">
+        从实现上看，Claude Code 的记忆系统可以抽象为三层：第一层是 <span class="mono">memdir</span> 管理的持久化文件记忆；第二层是查询时的目录扫描与相关性选择；第三层是 <span class="mono">SessionMemory</span> 负责会话内摘要与压缩。三层不是彼此替代，而是各自解决不同时间尺度的问题。
+      </p>
+
+      <div class="card">
+        <h4>三层结构图</h4>
+        <div class="code-block">
+<span class="cm">┌──────────────────────────────────────────────────────────────┐</span><br>
+<span class="cm">│</span> <span class="kw">Layer 1: 持久化文件记忆</span>                                           <span class="cm">│</span><br>
+<span class="cm">│</span>   private/team 目录 + <span class="fn">MEMORY.md</span> 入口 + 主题化 <span class="str">*.md</span> 文件   <span class="cm">│</span><br>
+<span class="cm">├──────────────────────────────────────────────────────────────┤</span><br>
+<span class="cm">│</span> <span class="kw">Layer 2: 查询时召回</span>                                               <span class="cm">│</span><br>
+<span class="cm">│</span>   <span class="fn">scanMemoryFiles()</span> 扫描 frontmatter → <span class="fn">findRelevantMemories()</span> 选最多 5 个 <span class="cm">│</span><br>
+<span class="cm">├──────────────────────────────────────────────────────────────┤</span><br>
+<span class="cm">│</span> <span class="kw">Layer 3: SessionMemory</span>                                          <span class="cm">│</span><br>
+<span class="cm">│</span>   长对话阈值触发摘要更新，维持会话内压缩记忆与连续性                           <span class="cm">│</span><br>
+<span class="cm">└──────────────────────────────────────────────────────────────┘</span>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <span class="badge badge-blue">长期</span>
+          <span class="badge badge-purple">查询时</span>
+          <span class="badge badge-green">会话级</span>
+          <span class="badge badge-orange">架构级自愈</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>为什么说它是“自愈”而不是“自动清理”</h4>
+          <p style="font-size:14px;color:var(--text-secondary)">
+            代码没有展示一个后台垃圾回收器去定时删除旧记忆；相反，它通过<strong>限制入口膨胀</strong>、<strong>提示过时风险</strong>、<strong>要求更新或删除错误条目</strong>、<strong>避免重复写入</strong>，把“修复记忆”的责任转交给模型工作流本身。
+          </p>
+        </div>
+        <div class="card">
+          <h4>两种持久作用域</h4>
+          <p style="font-size:14px;color:var(--text-secondary)">
+            <span class="mono">paths.ts</span> 与 <span class="mono">teamMemPaths.ts</span> 说明持久化目录分为私有 auto memory 与可选团队 memory。它不是任意层级树，而是围绕“同一项目、不同共享范围”设计的双目录结构。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="types">
+      <h2><span class="icon">🧩</span> 四种记忆类型</h2>
+      <p class="section-intro">
+        记忆类型在 <span class="mono">memoryTypes.ts</span> 中被硬编码为一个封闭集合，分别是 <span class="mono">'user'</span>、<span class="mono">'feedback'</span>、<span class="mono">'project'</span>、<span class="mono">'reference'</span>。这种封闭类型系统非常重要：它迫使系统只保存“当前代码和 git 历史无法直接推导”的上下文。
+      </p>
+
+      <div class="card">
+        <h4>类型定义（精确事实）</h4>
+        <div class="code-block">
+<span class="kw">export const</span> <span class="fn">MEMORY_TYPES</span> = [<br>
+&nbsp;&nbsp;<span class="str">'user'</span>,<br>
+&nbsp;&nbsp;<span class="str">'feedback'</span>,<br>
+&nbsp;&nbsp;<span class="str">'project'</span>,<br>
+&nbsp;&nbsp;<span class="str">'reference'</span>,<br>
+] <span class="kw">as const</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>类型职责矩阵</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>推荐范围</th>
+              <th>保存内容</th>
+              <th>典型用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-blue">user</span></td>
+              <td>始终私有</td>
+              <td>用户角色、目标、知识背景、偏好</td>
+              <td>让解释与协作方式贴合具体用户</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-purple">feedback</span></td>
+              <td>默认私有；项目级规范可升为团队</td>
+              <td>用户对工作方式的纠正或确认</td>
+              <td>避免重复犯错，也保留被验证有效的方法</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">project</span></td>
+              <td>私有或团队，偏向团队</td>
+              <td>目标、截止日期、事件、约束、动机</td>
+              <td>补足代码仓库外的项目语境</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">reference</span></td>
+              <td>通常团队</td>
+              <td>外部系统入口与信息指针</td>
+              <td>告诉模型“去哪里找最新信息”</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>关键约束：</strong>系统明确排除了代码结构、架构、git 历史、调试方案、当前任务细节等“可从项目状态导出”的内容。换言之，记忆系统是补充上下文，不是替代代码检索。
+      </div>
+    </section>
+
+    <section class="section" id="modules">
+      <h2><span class="icon">🗂️</span> 八个核心模块</h2>
+      <p class="section-intro">
+        用户要求覆盖的八个文件，恰好构成持久化记忆层的核心骨架：路径解析、类型定义、入口生成、扫描、相关性选择、安全校验、老化提示与组合提示词生成，各自分工清晰。
+      </p>
+
+      <div class="card">
+        <h4>模块清单与职责</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>角色</th>
+              <th>技术意义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">memdir.ts</td>
+              <td>记忆系统主入口</td>
+              <td>定义 <span class="mono">MEMORY.md</span>、截断规则、提示词拼装与目录存在约束</td>
+            </tr>
+            <tr>
+              <td class="mono">memoryScan.ts</td>
+              <td>目录扫描器</td>
+              <td>递归读取 markdown 头部、抽取 frontmatter、按 mtime 倒序排序、上限 200 文件</td>
+            </tr>
+            <tr>
+              <td class="mono">findRelevantMemories.ts</td>
+              <td>相关性选择器</td>
+              <td>将扫描结果交给 Sonnet 做选择，最多返回 5 个记忆文件</td>
+            </tr>
+            <tr>
+              <td class="mono">teamMemPaths.ts</td>
+              <td>团队路径安全层</td>
+              <td>防遍历、防符号链接逃逸、防 null byte / URL 编码 / Unicode 归一化攻击</td>
+            </tr>
+            <tr>
+              <td class="mono">memoryAge.ts</td>
+              <td>陈旧度注释层</td>
+              <td>把 mtime 变成人类可理解的“几天前”，并在 &gt;1 天时给出风险提示</td>
+            </tr>
+            <tr>
+              <td class="mono">memoryTypes.ts</td>
+              <td>类型法典</td>
+              <td>定义四类记忆、保存准则、不要保存什么、访问记忆时的漂移警告</td>
+            </tr>
+            <tr>
+              <td class="mono">teamMemPrompts.ts</td>
+              <td>双目录提示词构建器</td>
+              <td>在 private + team 模式下生成组合提示，强调双入口索引都要受限</td>
+            </tr>
+            <tr>
+              <td class="mono">paths.ts</td>
+              <td>auto memory 路径解析器</td>
+              <td>处理开关、覆盖、配置源优先级、git root 归一化与项目隔离</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h4>入口常量</h4>
+          <div class="code-block">
+<span class="kw">export const</span> <span class="fn">ENTRYPOINT_NAME</span> = <span class="str">'MEMORY.md'</span><br>
+<span class="kw">export const</span> <span class="fn">MAX_ENTRYPOINT_LINES</span> = <span class="num">200</span><br>
+<span class="kw">export const</span> <span class="fn">MAX_ENTRYPOINT_BYTES</span> = <span class="num">25000</span>
+          </div>
+        </div>
+        <div class="card">
+          <h4>团队模式补充</h4>
+          <p style="font-size:14px;color:var(--text-secondary)">
+            <span class="mono">teamMemPrompts.ts</span> 明确指出 private 与 team 两个目录各自拥有自己的 <span class="mono">MEMORY.md</span>，并且两个入口都会被注入上下文，因此两个索引都必须保持简洁。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="scan">
+      <h2><span class="icon">🛰️</span> 分层扫描与入口治理</h2>
+      <p class="section-intro">
+        这里的“分层扫描”不是多租户数据库式的层级搜索，而是围绕 <strong>项目作用域 → 目录作用域 → 入口索引 → 主题文件</strong> 逐层展开。代码中最稳定、最可证实的层次，是 per-project 路径隔离、private/team 双目录，以及目录内的 <span class="mono">MEMORY.md</span> + 主题文件结构。
+      </p>
+
+      <div class="card">
+        <h4>项目与目录层次</h4>
+        <div class="code-block">
+<span class="cm">~/.claude 或远程 memory base</span><br>
+└─ projects/<span class="fn">sanitized-git-root</span>/<br>
+&nbsp;&nbsp;&nbsp;└─ memory/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ <span class="fn">MEMORY.md</span>                  <span class="cm"># private 入口索引</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ *.md                       <span class="cm"># private 主题记忆</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ team/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ <span class="fn">MEMORY.md</span>            <span class="cm"># team 入口索引</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ *.md                 <span class="cm"># team 主题记忆</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>扫描算法</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>定位目录</strong>：<span class="mono">paths.ts</span> 决定 auto memory 根目录；启用 team memory 时，<span class="mono">teamMemPaths.ts</span> 派生团队子目录。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>递归枚举</strong>：<span class="mono">scanMemoryFiles(memoryDir)</span> 使用 <span class="mono">readdir(..., { recursive: true })</span> 找到目录下所有 <span class="mono">.md</span> 文件。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>入口排除</strong>：扫描时显式排除 <span class="mono">MEMORY.md</span>，因为入口索引已在系统提示中直接加载，不需要重复参与相关性候选。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">4</div>
+            <div class="pipe-content"><strong>头部抽样</strong>：每个候选文件只读取前 30 行，用来解析 frontmatter 中的 <span class="mono">type</span> 与 <span class="mono">description</span>。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">5</div>
+            <div class="pipe-content"><strong>新鲜度排序</strong>：结果按 <span class="mono">mtimeMs</span> 倒序排列，只保留最新的 200 个。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>入口索引治理：200 行 + 25KB 双闸门</h4>
+        <p style="font-size:14px;color:var(--text-secondary)">
+          <span class="mono">memdir.ts</span> 的 <span class="mono">truncateEntrypointContent()</span> 同时限制入口索引的行数与字节数：先按自然换行裁切到 <span class="mono">MAX_ENTRYPOINT_LINES = 200</span>，再按 <span class="mono">MAX_ENTRYPOINT_BYTES = 25000</span> 做字节级截断，避免长行索引在“行数没超但体积爆炸”的情况下污染上下文窗口。
+        </p>
+        <div class="code-block">
+<span class="kw">const</span> <span class="fn">wasLineTruncated</span> = lineCount &gt; <span class="num">200</span><br>
+<span class="kw">const</span> <span class="fn">wasByteTruncated</span> = byteCount &gt; <span class="num">25000</span><br><br>
+<span class="cm">// 先切行，再切字节；最终附加 WARNING 提示</span>
+        </div>
+      </div>
+
+      <div class="callout safe">
+        <strong>自动扫描发现</strong> 的真正含义是：系统无需预先维护一张独立数据库表，而是直接把 memory 目录当作事实源，在查询时递归扫描、抽样 frontmatter、排序并构造候选清单。
+      </div>
+    </section>
+
+    <section class="section" id="matching">
+      <h2><span class="icon">🎯</span> 相关性匹配</h2>
+      <p class="section-intro">
+        Claude Code 没有在这部分使用向量索引或关键词规则引擎，而是把扫描后的 manifest 交给一个侧路 Sonnet 调用，让模型从文件名、描述、时间戳与最近使用工具中做选择。这种设计把“召回”与“主回答”拆开，降低主线程噪音。
+      </p>
+
+      <div class="card">
+        <h4>候选清单格式</h4>
+        <div class="code-block">
+- [user] user_profile.md (2026-03-05T12:34:56.000Z): senior Go engineer, new to React<br>
+- [feedback] testing_policy.md (2026-03-02T08:10:00.000Z): integration tests must hit real DB<br>
+- [reference] ingest_linear.md (2026-03-01T06:20:00.000Z): pipeline bugs tracked in Linear INGEST
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>选择逻辑</h4>
+          <ul>
+            <li>过滤 <span class="mono">alreadySurfaced</span>，避免重复把同一记忆反复塞回上下文。</li>
+            <li>把候选 manifest 和用户查询交给 Sonnet 侧查询。</li>
+            <li>返回严格 JSON：<span class="mono">selected_memories: string[]</span>。</li>
+            <li>只接受真实存在于当前候选集合中的文件名。</li>
+            <li>最多选择 5 个记忆文件。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>工具感知去噪</h4>
+          <p style="font-size:14px;color:var(--text-secondary)">
+            如果近期已经在使用某个工具，系统会告诉选择器：不要再召回该工具的纯参考说明文档；但若记忆里保存的是该工具的<strong>坑点、警告或已知问题</strong>，仍然应该召回。这是很典型的“相关 ≠ 有用”过滤。
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>召回流程图</h4>
+        <div class="code-block">
+<span class="cm">Query</span><br>
+&nbsp;&nbsp;↓<br>
+<span class="fn">scanMemoryFiles()</span> <span class="cm">→ 读取 .md 头部 → mtime 倒序 → 最多 200</span><br>
+&nbsp;&nbsp;↓<br>
+过滤 <span class="fn">alreadySurfaced</span><br>
+&nbsp;&nbsp;↓<br>
+<span class="fn">formatMemoryManifest()</span><br>
+&nbsp;&nbsp;↓<br>
+<span class="fn">sideQuery(Sonnet)</span> <span class="cm">→ 最多 5 个 selected_memories</span><br>
+&nbsp;&nbsp;↓<br>
+校验文件名存在<br>
+&nbsp;&nbsp;↓<br>
+返回 <span class="tp">RelevantMemory[]</span> = { path, mtimeMs }
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <strong>注意边界：</strong>这里的相关性匹配确实是“模型驱动的选择”，但并没有证据表明它维护任何长期 embedding 索引、相似度缓存或跨项目共享召回池。报告中应避免把它描述成向量数据库。
+      </div>
+    </section>
+
+    <section class="section" id="session-memory">
+      <h2><span class="icon">🧮</span> SessionMemory 阈值</h2>
+      <p class="section-intro">
+        持久化文件记忆之外，Claude Code 还有一层会话级摘要记忆。它主要针对长对话压缩和跨轮连续性，而不是替代 memdir 主题文件。是否触发更新，取决于三个精确阈值。
+      </p>
+
+      <div class="card">
+        <h4>默认阈值（精确事实）</h4>
+        <div class="code-block">
+<span class="kw">export const</span> <span class="fn">DEFAULT_SESSION_MEMORY_CONFIG</span> = {<br>
+&nbsp;&nbsp;<span class="fn">minimumMessageTokensToInit</span>: <span class="num">10000</span>,<br>
+&nbsp;&nbsp;<span class="fn">minimumTokensBetweenUpdate</span>: <span class="num">5000</span>,<br>
+&nbsp;&nbsp;<span class="fn">toolCallsBetweenUpdates</span>: <span class="num">3</span>,<br>
+}
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>阈值含义</h4>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>配置项</th>
+              <th>值</th>
+              <th>控制点</th>
+              <th>含义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">minimumMessageTokensToInit</td>
+              <td>10000</td>
+              <td>初始化门槛</td>
+              <td>上下文窗口累计到 10K token 后，SessionMemory 才被正式启用</td>
+            </tr>
+            <tr>
+              <td class="mono">minimumTokensBetweenUpdate</td>
+              <td>5000</td>
+              <td>更新门槛</td>
+              <td>距离上次提取后，至少再增长 5K token 才允许下一轮提取</td>
+            </tr>
+            <tr>
+              <td class="mono">toolCallsBetweenUpdates</td>
+              <td>3</td>
+              <td>活跃度门槛</td>
+              <td>工具调用数达到 3 次时，配合 token 条件决定是否抽取摘要</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>更新判定要点</h4>
+        <div class="code-block">
+<span class="kw">const</span> <span class="fn">shouldExtract</span> =<br>
+&nbsp;&nbsp;(hasMetTokenThreshold <span class="op">&&</span> hasMetToolCallThreshold) <span class="op">||</span><br>
+&nbsp;&nbsp;(hasMetTokenThreshold <span class="op">&&</span> !hasToolCallsInLastTurn)
+        </div>
+        <ul>
+          <li>Token 阈值始终是硬前提；工具调用阈值不能单独触发更新。</li>
+          <li>若最后一轮没有工具调用，也可在“自然停顿点”触发提取。</li>
+          <li>这使 SessionMemory 更像“按对话节奏抽取摘要”，而不是每轮都刷新。</li>
+        </ul>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>故障恢复阈值</h4>
+          <p style="font-size:14px;color:var(--text-secondary)">
+            除了更新门槛，<span class="mono">sessionMemoryUtils.ts</span> 还定义了 <span class="mono">EXTRACTION_WAIT_TIMEOUT_MS = 15000</span> 与 <span class="mono">EXTRACTION_STALE_THRESHOLD_MS = 60000</span>。若某次提取卡住太久，后续流程不会无限等待。
+          </p>
+        </div>
+        <div class="card">
+          <h4>写权限最小化</h4>
+          <p style="font-size:14px;color:var(--text-secondary)">
+            SessionMemory 的 forked agent 只被允许对精确的 session memory 文件执行 <span class="mono">Edit</span>。这说明该层既追求持续压缩，也强调“只改允许改的那一份摘要”。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="self-healing">
+      <h2><span class="icon">♻️</span> 自愈、陈旧控制与剪枝边界</h2>
+      <p class="section-intro">
+        “自愈”必须谨慎表述。基于代码，我们可以确认系统拥有多种<strong>纠偏机制</strong>；但同样必须承认：没有看到一个自动 TTL 删除器或后台 prune daemon。更准确的说法是，它实现了<strong>面向模型工作流的自愈协议</strong>。
+      </p>
+
+      <div class="card">
+        <h4>可被代码直接支持的自愈机制</h4>
+        <ul>
+          <li><strong>入口防膨胀：</strong><span class="mono">MEMORY.md</span> 同时受 200 行与 25KB 双上限约束，溢出时附带警告。</li>
+          <li><strong>重复抑制：</strong>提示词明确要求先检查是否已有可更新的记忆，避免重复文件和重复条目。</li>
+          <li><strong>错误修复：</strong>提示词明确写出“若记忆被证明错误或过时，应更新或移除”。</li>
+          <li><strong>陈旧提示：</strong><span class="mono">memoryAge.ts</span> 在记忆超过 1 天时注入“点时间观察，不是实时状态”的新鲜度告警。</li>
+          <li><strong>提取超时自恢复：</strong>SessionMemory 卡住超过 60 秒会被视为 stale，不再阻塞后续流程。</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4>陈旧度提示不是删除器</h4>
+        <div class="code-block">
+<span class="kw">if</span> (d <span class="op">&lt;=</span> <span class="num">1</span>) <span class="kw">return</span> <span class="str">''</span><br>
+<span class="kw">return</span> <span class="str">"This memory is N days old... Verify against current code before asserting as fact."</span>
+        </div>
+        <p style="font-size:14px;color:var(--text-secondary)">
+          这里的设计哲学非常清楚：系统不是直接替用户删掉“老文件”，而是通过提示让模型意识到该记忆可能已经漂移，需要去当前代码或外部资源重新核验。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>可以安全推断的“剪枝”</h4>
+          <ul>
+            <li>入口索引被截断，相当于对上下文注入做硬剪枝。</li>
+            <li>扫描候选只保留最新 200 文件，是召回集合级剪枝。</li>
+            <li>相关性选择最多 5 个，是最终注入级剪枝。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>不能过度宣称的内容</h4>
+          <ul>
+            <li>没有证据显示存在按年龄自动删除旧记忆的后台任务。</li>
+            <li>没有看到基于分数的全局 LRU / LFU 淘汰器。</li>
+            <li>没有看到数据库级 compaction；更多是提示词驱动的人工整理。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <strong>报告写法建议：</strong>可以说这是“自愈式记忆系统”，因为它会<strong>检测、警告、限制并引导修正</strong>；但不应写成“全自动后台清理系统”，那会超出代码能证明的范围。
+      </div>
+    </section>
+
+    <section class="section" id="flow">
+      <h2><span class="icon">🔄</span> 端到端工作流</h2>
+      <p class="section-intro">
+        最终把上述实现串起来，可以看到 Claude Code 的记忆系统并不是一次性加载全部记忆，而是依据不同时间尺度进行渐进式治理：入口索引负责“总览”，扫描与选择负责“按需召回”，SessionMemory 负责“长对话压缩”。
+      </p>
+
+      <div class="card">
+        <h4>完整工作链</h4>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="pipe-num">1</div>
+            <div class="pipe-content"><strong>路径建立</strong>：<span class="mono">paths.ts</span> 根据环境变量、设置与 canonical git root 解析 auto memory 目录；team 模式下再派生团队目录。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">2</div>
+            <div class="pipe-content"><strong>系统提示注入</strong>：<span class="mono">memdir.ts</span> / <span class="mono">teamMemPrompts.ts</span> 把类型规则、保存规则、访问规则与 <span class="mono">MEMORY.md</span> 入口内容送入上下文。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">3</div>
+            <div class="pipe-content"><strong>查询时扫描</strong>：<span class="mono">memoryScan.ts</span> 递归扫描主题文件，只读头部，按修改时间倒序构造 manifest。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">4</div>
+            <div class="pipe-content"><strong>相关性召回</strong>：<span class="mono">findRelevantMemories.ts</span> 让 Sonnet 从 manifest 中选出最多 5 个明确有帮助的记忆。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">5</div>
+            <div class="pipe-content"><strong>新鲜度提醒</strong>：读取具体记忆时，<span class="mono">memoryAge.ts</span> 可把 mtime 解释成“today / yesterday / N days ago”，并在旧记忆上附加 verify 提醒。</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">6</div>
+            <div class="pipe-content"><strong>会话摘要补位</strong>：当对话足够长时，<span class="mono">SessionMemory</span> 依据 10000 / 5000 / 3 的阈值抽取摘要，支撑长会话持续运行。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>结论：为什么这个设计有效</h4>
+        <p style="font-size:14px;color:var(--text-secondary)">
+          它避免了“全量装载所有历史记忆”的上下文浪费，也避免了“完全无状态”的重复解释成本。更重要的是，系统把长期记忆、即时相关性和会话压缩拆成三层，每一层都有自己的容量约束和纠偏策略，因此整体更稳健。
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <span class="badge badge-blue">类型受限</span>
+          <span class="badge badge-purple">目录扫描</span>
+          <span class="badge badge-green">最多 5 个召回</span>
+          <span class="badge badge-orange">阈值触发摘要</span>
+          <span class="badge badge-cyan">过时提醒</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <a href="index.html" class="footer-back">← 返回深度报告导航中心</a>
+      <br>
+      <a href="../reports/index.html" class="footer-back" style="margin-top:6px;display:inline-flex">← 返回总报告导航中心</a>
+      <div class="footer-meta">
+        Claude Code <code>v2.1.88</code> · 记忆系统深度技术分析 · 仅供技术研究用途<br>
+        基于公开 npm 包静态分析；内容严格限定于代码可支持的架构级事实与合理解释
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var sections = document.querySelectorAll('.section');
+  var sidebarLinks = document.querySelectorAll('.sidebar a');
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        sidebarLinks.forEach(function (link) { link.classList.remove('active'); });
+        var active = document.querySelector('.sidebar a[href="#' + entry.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(function (section) { observer.observe(section); });
+
+  sidebarLinks.forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      var sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('open');
+    });
+  });
+
+  var toggleBtn = document.getElementById('sidebarToggle');
+  var sidebar = document.getElementById('sidebar');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
