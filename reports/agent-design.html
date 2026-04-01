@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent系统设计 — Claude Code v2.1.88 源码分析</title>
+<style>
+/* ========== CSS Variables / Theme ========== */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--accent-cyan);
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+/* ========== Particle Background ========== */
+.particle-bg {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  border-radius: 50%; background: var(--accent-blue);
+  opacity: 0; animation: particleFloat linear infinite;
+}
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+/* ========== Top Navigation ========== */
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue);
+  padding: 6px 14px;
+  background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 20px;
+  transition: all var(--transition);
+}
+.top-nav .back-link:hover {
+  background: rgba(88,166,255,0.15);
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+}
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title {
+  font-size: 0.9rem; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ========== Sidebar TOC ========== */
+.sidebar {
+  position: fixed; top: 56px; left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - 56px);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50;
+  padding: 24px 0;
+  transform: translateX(0);
+  transition: transform var(--transition);
+}
+.sidebar-title {
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 0 20px;
+  margin-bottom: 12px;
+}
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 20px; font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-left: 3px solid transparent;
+  transition: all var(--transition);
+}
+.sidebar-nav a:hover {
+  color: var(--text-primary);
+  background: rgba(88,166,255,0.05);
+  border-left-color: rgba(88,166,255,0.3);
+}
+.sidebar-nav a.active {
+  color: var(--accent-blue);
+  background: rgba(88,166,255,0.08);
+  border-left-color: var(--accent-blue);
+  font-weight: 600;
+}
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-tertiary); font-size: 0.7rem;
+  font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num {
+  background: rgba(88,166,255,0.15);
+  color: var(--accent-blue);
+}
+.sidebar-toggle {
+  display: none;
+  position: fixed; top: 62px; left: 12px;
+  z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm); cursor: pointer;
+  color: var(--text-secondary); font-size: 1.1rem;
+  align-items: center; justify-content: center;
+}
+
+/* ========== Main Content ========== */
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: 56px;
+  padding: 0;
+  position: relative; z-index: 1;
+  min-height: calc(100vh - 56px);
+}
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ========== Header ========== */
+.page-header {
+  padding: 60px 0 40px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.page-header::before {
+  content: ''; position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow {
+  0%   { transform: translate(-5%, -5%) scale(1); }
+  100% { transform: translate(5%, 5%) scale(1.1); }
+}
+.page-header .badge {
+  display: inline-block; padding: 5px 14px;
+  background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3);
+  border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle {
+  font-size: 1rem; color: var(--text-secondary);
+  max-width: 600px; margin: 0 auto;
+}
+.header-line {
+  width: 60px; height: 3px;
+  background: var(--gradient-primary);
+  margin: 24px auto 0; border-radius: 2px;
+}
+
+/* ========== Section ========== */
+.content-section {
+  padding: 56px 0 20px;
+  scroll-margin-top: 80px;
+}
+.section-title { margin-bottom: 36px; }
+.section-title h2 {
+  font-size: 1.6rem; font-weight: 700;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+}
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p {
+  color: var(--text-secondary); font-size: 0.95rem;
+  margin-left: 52px;
+}
+
+/* ========== Fade In ========== */
+.fade-section {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.fade-section.visible { opacity: 1; transform: translateY(0); }
+
+/* ========== Layer Items ========== */
+.layers-list { display: flex; flex-direction: column; gap: 0; }
+.layer-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.layer-item::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.layer-item:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.layer-head {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 8px;
+}
+.layer-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.layer-name { font-size: 1.1rem; font-weight: 700; }
+.layer-body { margin-left: 50px; }
+.layer-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 6px; }
+.layer-files { display: flex; flex-wrap: wrap; gap: 6px; }
+.layer-files span {
+  font-size: 0.78rem; padding: 3px 10px;
+  background: var(--bg-tertiary);
+  border-radius: 12px; color: var(--text-muted);
+}
+.layer-arrow {
+  display: flex; align-items: center; justify-content: center;
+  height: 32px; position: relative;
+}
+.layer-arrow::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple));
+  opacity: 0.3;
+}
+.layer-arrow svg {
+  width: 16px; height: 16px; fill: none;
+  stroke: var(--accent-blue); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0.5;
+}
+.layer-1::before { background: var(--accent-blue); }
+.layer-1 .layer-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.layer-1:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+.layer-2::before { background: var(--accent-purple); }
+.layer-2 .layer-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.layer-2:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+.layer-3::before { background: var(--accent-green); }
+.layer-3 .layer-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.layer-3:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+.layer-4::before { background: var(--accent-cyan); }
+.layer-4 .layer-num { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+.layer-4:hover { box-shadow: 0 0 20px rgba(118,228,247,0.12); }
+.layer-5::before { background: var(--accent-orange); }
+.layer-5 .layer-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.layer-5:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+.layer-6::before { background: var(--accent-pink); }
+.layer-6 .layer-num { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+.layer-6:hover { box-shadow: 0 0 20px rgba(247,120,186,0.12); }
+.layer-7::before { background: var(--accent-yellow); }
+.layer-7 .layer-num { background: rgba(245,213,71,0.15); color: var(--accent-yellow); }
+.layer-7:hover { box-shadow: 0 0 20px rgba(245,213,71,0.12); }
+
+/* ========== Tables ========== */
+.info-table-wrap { overflow-x: auto; margin-top: 24px; }
+.info-table {
+  width: 100%; border-collapse: collapse;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden; font-size: 0.88rem;
+}
+.info-table th, .info-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+}
+.info-table th {
+  background: var(--bg-tertiary);
+  color: var(--accent-blue);
+  font-weight: 700; font-size: 0.82rem;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.info-table td { color: var(--text-secondary); }
+.info-table tr:last-child td { border-bottom: none; }
+.info-table tr:hover td { background: rgba(88,166,255,0.03); }
+
+/* ========== Agent Type Cards ========== */
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.agent-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.agent-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+}
+.agent-card-num {
+  font-size: 0.75rem; font-weight: 700;
+  padding: 3px 10px; border-radius: 12px;
+  display: inline-block; margin-bottom: 10px;
+}
+.agent-card-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+.agent-card-desc { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ========== Code Block ========== */
+.code-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 24px; margin-top: 24px;
+  overflow-x: auto;
+}
+.code-block-title {
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 12px;
+}
+.code-block pre {
+  margin: 0; font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem; line-height: 1.7; color: var(--text-secondary);
+}
+.code-block pre .cm-key { color: var(--accent-cyan); }
+.code-block pre .cm-val { color: var(--accent-green); }
+.code-block pre .cm-comment { color: var(--text-muted); font-style: italic; }
+.code-block pre .cm-bracket { color: var(--accent-purple); }
+.code-block pre .cm-tag { color: var(--accent-orange); }
+.code-block pre .cm-attr { color: var(--accent-cyan); }
+.code-block pre .cm-str { color: var(--accent-green); }
+
+/* ========== Diagram Box ========== */
+.diagram-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px; margin-top: 20px; overflow-x: auto;
+}
+.diagram-title {
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 16px;
+}
+.diagram-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.diagram-cell {
+  padding: 12px 18px; border-radius: var(--radius-sm);
+  font-size: 0.88rem; font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  flex: 1; min-width: 120px; text-align: center;
+}
+
+/* ========== Timeline ========== */
+.timeline { position: relative; padding-left: 40px; }
+.timeline::before {
+  content: ''; position: absolute;
+  left: 17px; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(to bottom, var(--accent-blue), var(--accent-purple), var(--accent-green));
+  opacity: 0.3;
+}
+.timeline-item { position: relative; padding: 16px 0 24px; }
+.timeline-dot {
+  position: absolute; left: -32px; top: 18px;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 800;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--accent-blue);
+  color: var(--accent-blue); z-index: 1;
+}
+.timeline-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  transition: all var(--transition);
+}
+.timeline-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.timeline-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+.timeline-desc { font-size: 0.88rem; color: var(--text-secondary); }
+
+/* ========== Nested Box ========== */
+.nested-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem; line-height: 1.8;
+  color: var(--text-secondary); overflow-x: auto;
+  white-space: pre;
+}
+.nested-box .nb-fn { color: var(--accent-cyan); font-weight: 700; }
+.nested-box .nb-info { color: var(--text-muted); font-style: italic; }
+.nested-box .nb-tree { color: var(--accent-purple); }
+.nested-box .nb-item { color: var(--accent-green); }
+.nested-box .nb-highlight { color: var(--accent-orange); font-weight: 600; }
+
+/* ========== Condition list ========== */
+.cond-list { list-style: none; margin-top: 20px; }
+.cond-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  font-size: 0.9rem; color: var(--text-secondary);
+}
+.cond-list li:last-child { border-bottom: none; }
+.cond-icon { flex-shrink: 0; margin-top: 2px; font-size: 0.85rem; width: 20px; text-align: center; }
+
+/* ========== Flow Cards ========== */
+.flow-cards { display: flex; flex-direction: column; gap: 12px; }
+.flow-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  display: flex; align-items: center; gap: 16px;
+  transition: all var(--transition);
+}
+.flow-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.flow-card-num {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+  background: var(--bg-secondary);
+}
+.flow-card-info { flex: 1; min-width: 0; }
+.flow-card-name { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.flow-card-desc { font-size: 0.88rem; color: var(--text-secondary); }
+
+/* ========== Memory Layers ========== */
+.memory-stack { display: flex; flex-direction: column; gap: 0; }
+.memory-layer {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 22px 24px;
+  transition: all var(--transition); position: relative;
+}
+.memory-layer:first-child { border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.memory-layer:last-child { border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.memory-layer:hover { border-color: var(--border-highlight); }
+.memory-icon { font-size: 1.5rem; margin-bottom: 6px; display: block; }
+.memory-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.memory-desc { font-size: 0.88rem; color: var(--text-secondary); }
+.memory-connector {
+  display: flex; align-items: center; justify-content: center;
+  height: 24px; position: relative;
+}
+.memory-connector::before {
+  content: ''; width: 2px; height: 100%;
+  position: absolute;
+  background: linear-gradient(to bottom, var(--accent-purple), var(--accent-cyan));
+  opacity: 0.3;
+}
+
+/* ========== Callout ========== */
+.callout {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--accent-orange);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 18px 22px; margin-top: 20px;
+}
+.callout-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--accent-orange); }
+.callout-body { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ========== Permission hierarchy ========== */
+.perm-list { display: flex; flex-direction: column; gap: 12px; }
+.perm-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  display: flex; align-items: flex-start; gap: 14px;
+  transition: all var(--transition);
+}
+.perm-item:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.perm-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 800; flex-shrink: 0;
+  background: rgba(126,231,135,0.12); color: var(--accent-green);
+}
+.perm-info { flex: 1; }
+.perm-name { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.perm-desc { font-size: 0.88rem; color: var(--text-secondary); }
+
+/* ========== Eval Grid ========== */
+.eval-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+}
+.eval-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.eval-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; width: 100%; height: 3px;
+}
+.eval-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateY(-3px);
+}
+.eval-pros::before { background: var(--gradient-green); }
+.eval-pros:hover { box-shadow: var(--glow-green); }
+.eval-cons::before { background: linear-gradient(90deg, var(--accent-orange), var(--accent-red)); }
+.eval-cons:hover { box-shadow: 0 0 20px rgba(240,136,62,0.2); }
+.eval-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1.15rem; font-weight: 700; margin-bottom: 16px;
+}
+.eval-list { list-style: none; }
+.eval-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;
+}
+.eval-list li:last-child { border-bottom: none; }
+.eval-list .eval-icon { flex-shrink: 0; margin-top: 3px; font-size: 0.85rem; }
+
+/* ========== Bridge Diagram ========== */
+.bridge-diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem; line-height: 1.8;
+  color: var(--text-secondary); overflow-x: auto;
+  white-space: pre;
+}
+.bridge-diagram .bd-main { color: var(--accent-cyan); font-weight: 700; }
+.bridge-diagram .bd-arrow { color: var(--accent-purple); }
+.bridge-diagram .bd-node { color: var(--accent-green); }
+.bridge-diagram .bd-detail { color: var(--text-muted); }
+.bridge-diagram .bd-tree { color: var(--accent-orange); }
+
+/* ========== Phase cards ========== */
+.phase-cards { display: flex; flex-direction: column; gap: 16px; }
+.phase-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: all var(--transition);
+}
+.phase-card:hover {
+  border-color: var(--border-highlight);
+  transform: translateX(4px);
+}
+.phase-num {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+}
+.phase-info { flex: 1; }
+.phase-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.phase-desc { font-size: 0.88rem; color: var(--text-secondary); }
+
+/* ========== Metric row ========== */
+.metric-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.metric-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 20px; flex: 1; min-width: 140px; text-align: center;
+}
+.metric-val {
+  font-size: 1.4rem; font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.metric-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ========== Footer ========== */
+.footer {
+  padding: 48px 0; text-align: center;
+  border-top: 1px solid var(--border-color); margin-top: 40px;
+}
+.footer p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px; }
+.footer .footer-brand {
+  font-weight: 600;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .eval-grid { grid-template-columns: 1fr; }
+  .agent-grid { grid-template-columns: 1fr; }
+  .info-table { font-size: 0.8rem; }
+  .info-table th, .info-table td { padding: 8px 10px; }
+  .top-nav .page-title { display: none; }
+  .diagram-row { flex-direction: column; }
+}
+@media (max-width: 480px) {
+  .layer-body { margin-left: 0; margin-top: 8px; }
+  .layer-head { flex-wrap: wrap; }
+  .timeline { padding-left: 32px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Particle Background -->
+<div class="particle-bg" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<!-- ==================== Top Navigation ==================== -->
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l4-4m-4 4l4 4"/></svg>
+    返回首页
+  </a>
+  <span class="page-title">Agent系统设计 — Claude Code v2.1.88</span>
+</nav>
+
+<!-- Sidebar Toggle (mobile) -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+
+<!-- ==================== Sidebar TOC ==================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-philosophy"><span class="toc-num">1</span>Agent核心设计哲学</a></li>
+    <li><a href="#sec-types"><span class="toc-num">2</span>Agent类型矩阵</a></li>
+    <li><a href="#sec-queryengine"><span class="toc-num">3</span>QueryEngine核心引擎</a></li>
+    <li><a href="#sec-lifecycle"><span class="toc-num">4</span>submitMessage生命周期</a></li>
+    <li><a href="#sec-queryloop"><span class="toc-num">5</span>query()三层循环架构</a></li>
+    <li><a href="#sec-modes"><span class="toc-num">6</span>四种执行模式对比</a></li>
+    <li><a href="#sec-coordinator"><span class="toc-num">7</span>Coordinator多Agent编排</a></li>
+    <li><a href="#sec-comm"><span class="toc-num">8</span>五路通信机制</a></li>
+    <li><a href="#sec-memory"><span class="toc-num">9</span>Agent记忆三层架构</a></li>
+    <li><a href="#sec-taskframework"><span class="toc-num">10</span>任务框架详解</a></li>
+    <li><a href="#sec-permission"><span class="toc-num">11</span>权限模型</a></li>
+    <li><a href="#sec-bridge"><span class="toc-num">12</span>Bridge远程控制架构</a></li>
+    <li><a href="#sec-eval"><span class="toc-num">13</span>设计评析</a></li>
+  </ul>
+</aside>
+
+<!-- ==================== Main Content ==================== -->
+<main class="main-content">
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="badge">AGENT SYSTEM DESIGN</div>
+      <h1>🤖 Agent系统设计分析</h1>
+      <p class="subtitle">深入剖析 Claude Code 的 Agent 架构、QueryEngine 核心引擎、多模式执行、通信机制与记忆系统</p>
+      <div class="header-line"></div>
+    </div>
+  </header>
+
+  <!-- ==================== 1. Agent核心设计哲学 ==================== -->
+  <section class="content-section fade-section" id="sec-philosophy">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">💡</span>
+          Agent核心设计哲学
+        </h2>
+        <p>5 大核心设计原则，定义 Claude Code 独特的 Agent 架构范式</p>
+      </div>
+
+      <div class="layers-list">
+        <div class="layer-item layer-1">
+          <div class="layer-head">
+            <span class="layer-num">1</span>
+            <span class="layer-name">🏛️ Agent即一等公民</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">每个Agent拥有独立QueryEngine、工具池、文件缓存、权限体系</p>
+            <div class="layer-files">
+              <span>独立QueryEngine</span><span>独立工具池</span><span>独立文件缓存</span><span>独立权限体系</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="layer-item layer-2">
+          <div class="layer-head">
+            <span class="layer-num">2</span>
+            <span class="layer-name">🔄 递归嵌套</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">无限深度嵌套支持，通过Token/USD预算、maxTurns、工具过滤控制递归</p>
+            <div class="layer-files">
+              <span>Token预算</span><span>USD预算</span><span>maxTurns限制</span><span>工具过滤</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="layer-item layer-3">
+          <div class="layer-head">
+            <span class="layer-num">3</span>
+            <span class="layer-name">🔒 隔离执行</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">Clone文件缓存(Copy-on-Write)，Git Worktree完全隔离</p>
+            <div class="layer-files">
+              <span>Copy-on-Write</span><span>Git Worktree</span><span>进程隔离</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="layer-item layer-4">
+          <div class="layer-head">
+            <span class="layer-num">4</span>
+            <span class="layer-name">💾 可恢复状态</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">独立取消、错误恢复、状态快照</p>
+            <div class="layer-files">
+              <span>AbortController</span><span>错误恢复</span><span>状态快照</span>
+            </div>
+          </div>
+        </div>
+        <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+        <div class="layer-item layer-5">
+          <div class="layer-head">
+            <span class="layer-num">5</span>
+            <span class="layer-name">⚡ 多模式执行</span>
+          </div>
+          <div class="layer-body">
+            <p class="layer-desc">同步/异步/远程/进程内四种协作模式</p>
+            <div class="layer-files">
+              <span>Sync 同步</span><span>Async 异步</span><span>Remote 远程</span><span>In-Process 进程内</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison Table -->
+      <div class="info-table-wrap">
+        <table class="info-table">
+          <thead>
+            <tr><th>特性</th><th>Claude Code</th><th>AutoGPT</th><th>CrewAI</th><th>LangGraph</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>执行隔离</strong></td>
+              <td style="color:var(--accent-green);">独立query()作用域</td>
+              <td>共享全局状态</td>
+              <td>角色级隔离</td>
+              <td>节点级隔离</td>
+            </tr>
+            <tr>
+              <td><strong>嵌套深度</strong></td>
+              <td style="color:var(--accent-green);">无限(预算控制)</td>
+              <td>不支持</td>
+              <td>不支持</td>
+              <td>有限</td>
+            </tr>
+            <tr>
+              <td><strong>通信机制</strong></td>
+              <td style="color:var(--accent-green);">5路通信</td>
+              <td>共享内存</td>
+              <td>消息传递</td>
+              <td>边连接</td>
+            </tr>
+            <tr>
+              <td><strong>状态管理</strong></td>
+              <td style="color:var(--accent-green);">CoW文件缓存</td>
+              <td>全局变量</td>
+              <td>共享内存</td>
+              <td>检查点</td>
+            </tr>
+            <tr>
+              <td><strong>并行安全</strong></td>
+              <td style="color:var(--accent-green);">✅ 天然安全</td>
+              <td style="color:var(--accent-red);">❌ 需加锁</td>
+              <td style="color:var(--accent-orange);">⚠️ 角色锁</td>
+              <td style="color:var(--accent-orange);">⚠️ 图锁</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. Agent类型矩阵 ==================== -->
+  <section class="content-section fade-section" id="sec-types">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">🧩</span>
+          Agent类型矩阵
+        </h2>
+        <p>7 种任务类型，覆盖本地执行到云端协作的全场景</p>
+      </div>
+
+      <div class="agent-grid">
+        <div class="agent-card" style="border-top:3px solid var(--accent-green);">
+          <span class="agent-card-num" style="background:rgba(126,231,135,0.15);color:var(--accent-green);">1</span>
+          <div class="agent-card-title" style="color:var(--accent-green);">local_bash</div>
+          <div class="agent-card-desc">本地Shell命令执行</div>
+        </div>
+        <div class="agent-card" style="border-top:3px solid var(--accent-blue);">
+          <span class="agent-card-num" style="background:rgba(88,166,255,0.15);color:var(--accent-blue);">2</span>
+          <div class="agent-card-title" style="color:var(--accent-blue);">local_agent</div>
+          <div class="agent-card-desc">本地子Agent，同步阻塞，父Agent等待完成</div>
+        </div>
+        <div class="agent-card" style="border-top:3px solid var(--accent-purple);">
+          <span class="agent-card-num" style="background:rgba(188,140,255,0.15);color:var(--accent-purple);">3</span>
+          <div class="agent-card-title" style="color:var(--accent-purple);">remote_agent</div>
+          <div class="agent-card-desc">云端CCR环境执行，Session轮询</div>
+        </div>
+        <div class="agent-card" style="border-top:3px solid var(--accent-cyan);">
+          <span class="agent-card-num" style="background:rgba(118,228,247,0.15);color:var(--accent-cyan);">4</span>
+          <div class="agent-card-title" style="color:var(--accent-cyan);">in_process_teammate</div>
+          <div class="agent-card-desc">Swarm进程内协作，AsyncLocalStorage隔离</div>
+        </div>
+        <div class="agent-card" style="border-top:3px solid var(--accent-orange);">
+          <span class="agent-card-num" style="background:rgba(240,136,62,0.15);color:var(--accent-orange);">5</span>
+          <div class="agent-card-title" style="color:var(--accent-orange);">local_workflow</div>
+          <div class="agent-card-desc">本地工作流执行</div>
+        </div>
+        <div class="agent-card" style="border-top:3px solid var(--accent-pink);">
+          <span class="agent-card-num" style="background:rgba(247,120,186,0.15);color:var(--accent-pink);">6</span>
+          <div class="agent-card-title" style="color:var(--accent-pink);">monitor_mcp</div>
+          <div class="agent-card-desc">MCP服务监控</div>
+        </div>
+        <div class="agent-card" style="border-top:3px solid var(--accent-yellow);">
+          <span class="agent-card-num" style="background:rgba(245,213,71,0.15);color:var(--accent-yellow);">7</span>
+          <div class="agent-card-title" style="color:var(--accent-yellow);">dream</div>
+          <div class="agent-card-desc">自动记忆整合，后台执行</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-title">Agent 定义示例 (.claude/agents/explore.yml)</div>
+        <pre><span class="cm-comment"># .claude/agents/explore.yml</span>
+<span class="cm-key">model</span>: <span class="cm-val">claude-sonnet</span>
+<span class="cm-key">tools</span>: <span class="cm-bracket">[</span><span class="cm-val">Read</span>, <span class="cm-val">Grep</span>, <span class="cm-val">Glob</span>, <span class="cm-val">LSP</span><span class="cm-bracket">]</span>
+<span class="cm-key">omitClaudeMd</span>: <span class="cm-val">true</span>
+<span class="cm-key">maxTurns</span>: <span class="cm-val">6</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. QueryEngine核心引擎 ==================== -->
+  <section class="content-section fade-section" id="sec-queryengine">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">⚙️</span>
+          QueryEngine核心引擎
+        </h2>
+        <p>每个Agent的核心驱动，管理配置、状态与对话流程</p>
+      </div>
+
+      <div class="diagram-box">
+        <div class="diagram-title">配置层（不可变）</div>
+        <div class="diagram-row">
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>cwd</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>tools</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>commands</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>mcpClients</code></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>agents</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>permissions</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>model</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-blue);"><code>cache</code></div>
+        </div>
+      </div>
+
+      <div class="layer-arrow"><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0l-4-4m4 4l4-4"/></svg></div>
+
+      <div class="diagram-box">
+        <div class="diagram-title">会话状态（可变）</div>
+        <div class="diagram-row">
+          <div class="diagram-cell" style="border-color:var(--accent-purple);"><code>messages[]</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-purple);"><code>usage{}</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-purple);"><code>fileCache</code></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-cell" style="border-color:var(--accent-purple);"><code>discoveredSkills</code></div>
+          <div class="diagram-cell" style="border-color:var(--accent-purple);"><code>loadedMemoryPaths</code></div>
+        </div>
+      </div>
+
+      <div class="callout" style="border-left-color:var(--accent-cyan);margin-top:24px;">
+        <div class="callout-title" style="color:var(--accent-cyan);">🔗 核心关系</div>
+        <div class="callout-body">一个 QueryEngine = 一个对话会话 = 一个 Agent 实例</div>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-item">
+          <div class="metric-val">1,295</div>
+          <div class="metric-label">QueryEngine LOC</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">1,729</div>
+          <div class="metric-label">query() LOC</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">7</div>
+          <div class="metric-label">生命周期阶段</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 4. submitMessage七阶段生命周期 ==================== -->
+  <section class="content-section fade-section" id="sec-lifecycle">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">📋</span>
+          submitMessage七阶段生命周期
+        </h2>
+        <p>从用户输入到完成响应的完整处理管线</p>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot">1</div>
+          <div class="timeline-card">
+            <div class="timeline-title">🔧 上下文组装</div>
+            <div class="timeline-desc">系统提示 + 用户上下文 + CLAUDE.md + 工具描述</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">2</div>
+          <div class="timeline-card">
+            <div class="timeline-title">📝 用户输入处理</div>
+            <div class="timeline-desc">斜杠命令检测、ProcessUserInputContext（mutable → immutable）</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">3</div>
+          <div class="timeline-card">
+            <div class="timeline-title">💾 会话记录</div>
+            <div class="timeline-desc">文件快照（Watermark）、历史追加</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--accent-purple);color:var(--accent-purple);">4</div>
+          <div class="timeline-card">
+            <div class="timeline-title">🔄 query()循环执行</div>
+            <div class="timeline-desc">核心工具调用循环（1,729 LOC）</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--accent-green);color:var(--accent-green);">5</div>
+          <div class="timeline-card">
+            <div class="timeline-title">✅ 结构化输出验证</div>
+            <div class="timeline-desc">Zod Schema验证返回格式</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--accent-cyan);color:var(--accent-cyan);">6</div>
+          <div class="timeline-card">
+            <div class="timeline-title">🧠 停止钩子</div>
+            <div class="timeline-desc">extractMemories、autoDream、sessionMemory</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--accent-orange);color:var(--accent-orange);">7</div>
+          <div class="timeline-card">
+            <div class="timeline-title">🧹 清理</div>
+            <div class="timeline-desc">资源释放、状态重置</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5. query()三层循环架构 ==================== -->
+  <section class="content-section fade-section" id="sec-queryloop">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">🔁</span>
+          query()三层循环架构
+        </h2>
+        <p>嵌套三层循环，从顶层入口到单轮执行的精密控制</p>
+      </div>
+
+      <div class="nested-box"><span class="nb-fn">query()</span> <span class="nb-info">[顶层入口, 1,729 LOC]</span>
+  <span class="nb-tree">├──</span> 消息准备与上下文组装
+  <span class="nb-tree">├──</span> <span class="nb-fn">queryLoop()</span> <span class="nb-info">[循环控制]</span>
+  <span class="nb-tree">│   ├──</span> 终止条件检查
+  <span class="nb-tree">│   ├──</span> <span class="nb-fn">queryLoopBody()</span> <span class="nb-info">[单轮执行]</span>
+  <span class="nb-tree">│   │   ├──</span> <span class="nb-highlight">Claude API流式调用</span>
+  <span class="nb-tree">│   │   ├──</span> <span class="nb-highlight">StreamingToolExecutor并行执行</span>
+  <span class="nb-tree">│   │   ├──</span> <span class="nb-item">权限检查</span>
+  <span class="nb-tree">│   │   ├──</span> <span class="nb-item">工具调用</span>
+  <span class="nb-tree">│   │   └──</span> <span class="nb-item">结果反馈</span>
+  <span class="nb-tree">│   └──</span> 上下文压缩检查
+  <span class="nb-tree">└──</span> 结果收集与返回</div>
+
+      <h3 style="font-size:1.1rem;font-weight:700;margin-top:28px;margin-bottom:12px;color:var(--text-primary);">循环终止条件</h3>
+      <ul class="cond-list">
+        <li><span class="cond-icon">🛑</span><span>无ToolUseBlock → 模型认为任务完成</span></li>
+        <li><span class="cond-icon">🔢</span><span><code>maxTurns</code> 达到上限</span></li>
+        <li><span class="cond-icon">💰</span><span><code>taskBudget</code> 耗尽</span></li>
+        <li><span class="cond-icon">✋</span><span>用户中断（AbortController）</span></li>
+        <li><span class="cond-icon">❗</span><span>API 错误</span></li>
+        <li><span class="cond-icon">♻️</span><span>输出Token恢复触发</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== 6. 四种执行模式对比 ==================== -->
+  <section class="content-section fade-section" id="sec-modes">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(247,120,186,0.12);color:var(--accent-pink);">🚀</span>
+          四种执行模式对比
+        </h2>
+        <p>不同场景下的Agent执行策略，灵活匹配任务需求</p>
+      </div>
+
+      <div class="info-table-wrap">
+        <table class="info-table">
+          <thead>
+            <tr><th>模式</th><th>特点</th><th>通信</th><th>隔离级别</th><th>适用场景</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color:var(--accent-blue);">Sync（同步）</strong></td>
+              <td>父Agent阻塞等待</td><td>直接返回</td><td>Clone文件缓存</td><td>明确子任务</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--accent-purple);">Async（异步）</strong></td>
+              <td>Fire-and-forget</td><td>任务通知</td><td>Clone缓存+Worktree</td><td>后台长任务</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--accent-green);">Remote（远程）</strong></td>
+              <td>云端CCR执行</td><td>Session轮询</td><td>独立容器</td><td>资源密集型</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--accent-cyan);">In-Process（进程内）</strong></td>
+              <td>Swarm协作</td><td>消息队列</td><td>AsyncLocalStorage</td><td>团队协作</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--accent-orange);">Fork（分叉）</strong></td>
+              <td>继承父上下文</td><td>—</td><td>共享缓存</td><td>Prompt缓存优化</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 7. Coordinator多Agent编排 ==================== -->
+  <section class="content-section fade-section" id="sec-coordinator">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(245,213,71,0.12);color:var(--accent-yellow);">🎯</span>
+          Coordinator多Agent编排
+        </h2>
+        <p>四阶段工作流程，从研究到验证的全流程编排</p>
+      </div>
+
+      <div class="phase-cards">
+        <div class="phase-card">
+          <div class="phase-num">📊</div>
+          <div class="phase-info">
+            <div class="phase-name" style="color:var(--accent-blue);">研究阶段</div>
+            <div class="phase-desc">并行生成多个研究Worker</div>
+          </div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">🔗</div>
+          <div class="phase-info">
+            <div class="phase-name" style="color:var(--accent-purple);">综合阶段</div>
+            <div class="phase-desc">收集结果，综合分析</div>
+          </div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">🛠️</div>
+          <div class="phase-info">
+            <div class="phase-name" style="color:var(--accent-green);">实施阶段</div>
+            <div class="phase-desc">按序创建实施Worker</div>
+          </div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">✅</div>
+          <div class="phase-info">
+            <div class="phase-name" style="color:var(--accent-cyan);">验证阶段</div>
+            <div class="phase-desc">运行验证确认结果</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-title">任务通知格式</div>
+        <pre><span class="cm-tag">&lt;task-notification</span> <span class="cm-attr">task-id</span>=<span class="cm-str">"task_xxx"</span> <span class="cm-attr">status</span>=<span class="cm-str">"completed"</span><span class="cm-tag">&gt;</span>
+  Worker结果摘要...
+<span class="cm-tag">&lt;/task-notification&gt;</span></pre>
+      </div>
+
+      <h3 style="font-size:1.1rem;font-weight:700;margin-top:28px;margin-bottom:12px;color:var(--text-primary);">关键创新</h3>
+      <ul class="cond-list">
+        <li><span class="cond-icon">🏗️</span><span><strong>Coordinator = 纯系统提示注入</strong>（零代码路径修改）</span></li>
+        <li><span class="cond-icon">🛡️</span><span><strong>Anti-lazy synthesis guards</strong> 防止懒惰综合</span></li>
+        <li><span class="cond-icon">📝</span><span><strong>Scratchpad</strong> 跨Worker知识共享</span></li>
+        <li><span class="cond-icon">🔀</span><span><strong>Continue vs Spawn</strong> 决策矩阵</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== 8. 五路通信机制 ==================== -->
+  <section class="content-section fade-section" id="sec-comm">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(255,123,114,0.12);color:var(--accent-red);">📡</span>
+          五路通信机制
+        </h2>
+        <p>覆盖所有协作场景的统一通信体系，由 SendMessageTool 统一路由</p>
+      </div>
+
+      <div class="flow-cards">
+        <div class="flow-card">
+          <div class="flow-card-num" style="color:var(--accent-blue);">📁</div>
+          <div class="flow-card-info">
+            <div class="flow-card-name" style="color:var(--accent-blue);">文件邮箱</div>
+            <div class="flow-card-desc">Teammate间 → 文件系统读写</div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-card-num" style="color:var(--accent-purple);">🔌</div>
+          <div class="flow-card-info">
+            <div class="flow-card-name" style="color:var(--accent-purple);">UDS Socket</div>
+            <div class="flow-card-desc">本地跨Session → Unix Domain Socket</div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-card-num" style="color:var(--accent-green);">🌐</div>
+          <div class="flow-card-info">
+            <div class="flow-card-name" style="color:var(--accent-green);">Bridge</div>
+            <div class="flow-card-desc">远程通信 → WebSocket</div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-card-num" style="color:var(--accent-cyan);">📨</div>
+          <div class="flow-card-info">
+            <div class="flow-card-name" style="color:var(--accent-cyan);">进程内消息队列</div>
+            <div class="flow-card-desc">Swarm Worker → AsyncLocalStorage</div>
+          </div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-card-num" style="color:var(--accent-orange);">📡</div>
+          <div class="flow-card-info">
+            <div class="flow-card-name" style="color:var(--accent-orange);">广播</div>
+            <div class="flow-card-desc">一对多通知</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:24px;border-left-color:var(--accent-cyan);">
+        <div class="callout-title" style="color:var(--accent-cyan);">🔧 统一路由</div>
+        <div class="callout-body">所有通信路径均通过 <code>SendMessageTool</code>（917 LOC）统一接口路由，自动根据目标类型选择通信方式。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 9. Agent记忆三层架构 ==================== -->
+  <section class="content-section fade-section" id="sec-memory">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(188,140,255,0.12);color:var(--accent-purple);">🧠</span>
+          Agent记忆三层架构
+        </h2>
+        <p>三层记忆体系，从短期上下文到长期持久化的完整记忆管理</p>
+      </div>
+
+      <div class="memory-stack">
+        <div class="memory-layer" style="border-left:4px solid var(--accent-blue);">
+          <span class="memory-icon">🗄️</span>
+          <div class="memory-name" style="color:var(--accent-blue);">长期记忆</div>
+          <div class="memory-desc">用户级（<code>~/.claude/</code>）/ 项目级（<code>.claude/</code>）/ 本地 agent-memory 文件，跨会话持久化</div>
+        </div>
+        <div class="memory-connector"></div>
+        <div class="memory-layer" style="border-left:4px solid var(--accent-purple);">
+          <span class="memory-icon">📋</span>
+          <div class="memory-name" style="color:var(--accent-purple);">中期记忆</div>
+          <div class="memory-desc">CLAUDE.md 项目记忆，团队共享</div>
+        </div>
+        <div class="memory-connector"></div>
+        <div class="memory-layer" style="border-left:4px solid var(--accent-cyan);">
+          <span class="memory-icon">💭</span>
+          <div class="memory-name" style="color:var(--accent-cyan);">短期记忆</div>
+          <div class="memory-desc">对话上下文 + 文件缓存（Copy-on-Write），会话内有效</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:24px;border-left-color:var(--accent-yellow);">
+        <div class="callout-title" style="color:var(--accent-yellow);">💤 DreamTask — 自动记忆整合</div>
+        <div class="callout-body">后台 Markdown 生成，10 分钟扫描间隔，自动将会话中的关键信息整合为持久化记忆。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 10. 任务框架详解 ==================== -->
+  <section class="content-section fade-section" id="sec-taskframework">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">��</span>
+          任务框架详解
+        </h2>
+        <p>三种核心任务类型的详细对比与实现机制</p>
+      </div>
+
+      <div class="info-table-wrap">
+        <table class="info-table">
+          <thead>
+            <tr><th>特性</th><th>LocalAgentTask (682 LOC)</th><th>RemoteAgentTask (855 LOC)</th><th>InProcessTeammateTask (125 LOC)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>执行位置</strong></td><td>本地进程</td><td>云端CCR</td><td>本地进程内</td></tr>
+            <tr><td><strong>通信方式</strong></td><td>直接返回</td><td>Session轮询</td><td>消息队列</td></tr>
+            <tr><td><strong>隔离机制</strong></td><td>Clone文件缓存</td><td>独立容器</td><td>AsyncLocalStorage</td></tr>
+            <tr><td><strong>进度追踪</strong></td><td>ProgressTracker</td><td>远程状态查询</td><td>消息计数</td></tr>
+            <tr><td><strong>取消机制</strong></td><td>AbortController</td><td>远程终止</td><td>kill信号</td></tr>
+            <tr><td><strong>状态机</strong></td><td>pending→running→completed/failed/killed</td><td>同左</td><td>同左</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 11. 权限模型 ==================== -->
+  <section class="content-section fade-section" id="sec-permission">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">🔐</span>
+          权限模型
+        </h2>
+        <p>三层权限层级，从工具级到MCP安全边界的完整权限管理</p>
+      </div>
+
+      <div class="perm-list">
+        <div class="perm-item">
+          <div class="perm-num">1</div>
+          <div class="perm-info">
+            <div class="perm-name">CanUseToolFn</div>
+            <div class="perm-desc">工具级权限检查函数 — 每个工具独立的权限验证逻辑</div>
+          </div>
+        </div>
+        <div class="perm-item">
+          <div class="perm-num">2</div>
+          <div class="perm-info">
+            <div class="perm-name">Agent权限继承</div>
+            <div class="perm-desc">子Agent继承父Agent权限，可选覆盖 — 灵活的权限传递机制</div>
+          </div>
+        </div>
+        <div class="perm-item">
+          <div class="perm-num">3</div>
+          <div class="perm-info">
+            <div class="perm-name">MCP工具安全边界</div>
+            <div class="perm-desc">外部工具的额外安全审查 — 防止不受信任的MCP服务越权操作</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:24px;">
+        <div class="callout-title">⚠️ 权限困境</div>
+        <div class="callout-body">异步Agent的权限困境 — 无法交互确认，只能使用预授权工具。这意味着异步Agent在执行前必须获得所有必要权限，无法在运行时动态请求用户授权。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 12. Bridge远程控制架构 ==================== -->
+  <section class="content-section fade-section" id="sec-bridge">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">🌉</span>
+          Bridge远程控制架构
+        </h2>
+        <p>Web UI 到 CLI Session 的远程控制通道</p>
+      </div>
+
+      <div class="bridge-diagram"><span class="bd-main">Web UI</span> <span class="bd-arrow">→</span> <span class="bd-main">Bridge Server</span> <span class="bd-arrow">→</span> <span class="bd-main">CLI Session</span>
+  <span class="bd-tree">├──</span> <span class="bd-node">双JWT令牌系统</span> <span class="bd-detail">(Session Ingress + OAuth)</span>
+  <span class="bd-tree">├──</span> <span class="bd-node">Generation-based令牌清理</span>
+  <span class="bd-tree">├──</span> <span class="bd-node">Capacity-aware轮询</span>
+  <span class="bd-tree">├──</span> <span class="bd-node">Echo消除</span>
+  <span class="bd-tree">└──</span> <span class="bd-node">控制请求/响应协议</span></div>
+
+      <div class="metric-row">
+        <div class="metric-item">
+          <div class="metric-val">2,999</div>
+          <div class="metric-label">bridge/main.ts LOC</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">2,406</div>
+          <div class="metric-label">bridge/replBridge.ts LOC</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 13. 设计评析 ==================== -->
+  <section class="content-section fade-section" id="sec-eval">
+    <div class="container">
+      <div class="section-title">
+        <h2>
+          <span class="sec-icon" style="background:rgba(247,120,186,0.12);color:var(--accent-pink);">⚖️</span>
+          设计评析
+        </h2>
+        <p>Agent系统设计的优势与潜在关注点</p>
+      </div>
+
+      <div class="eval-grid">
+        <div class="eval-card eval-pros">
+          <div class="eval-title">✅ 巧妙之处</div>
+          <ul class="eval-list">
+            <li><span class="eval-icon">🏛️</span><span><strong>Agent即一等公民的统一抽象</strong>，简化扩展</span></li>
+            <li><span class="eval-icon">📋</span><span><strong>Copy-on-Write文件缓存</strong>，避免脏读，天然并行安全</span></li>
+            <li><span class="eval-icon">🔄</span><span><strong>递归嵌套+预算控制</strong>的优雅平衡</span></li>
+            <li><span class="eval-icon">📡</span><span><strong>五路通信</strong>覆盖所有协作场景</span></li>
+            <li><span class="eval-icon">🎯</span><span><strong>Coordinator纯配置注入</strong>，零代码修改</span></li>
+            <li><span class="eval-icon">⚙️</span><span><strong>System Prompt as Policy</strong> 灵活配置</span></li>
+          </ul>
+        </div>
+        <div class="eval-card eval-cons">
+          <div class="eval-title">⚠️ 潜在问题</div>
+          <ul class="eval-list">
+            <li><span class="eval-icon">💰</span><span><strong>递归Agent的Token消耗</strong>难以预测</span></li>
+            <li><span class="eval-icon">🔐</span><span><strong>异步Agent权限审批困境</strong></span></li>
+            <li><span class="eval-icon">📏</span><span><strong>Coordinator提示词过长</strong>影响效率</span></li>
+            <li><span class="eval-icon">🔍</span><span><strong>多Agent调试和追踪</strong>复杂度高</span></li>
+            <li><span class="eval-icon">🧱</span><span><strong>InProcessTeammate内存隔离有限</strong></span></li>
+            <li><span class="eval-icon">🔑</span><span><strong>Bridge双JWT</strong>增加认证复杂度</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <p><span class="footer-brand">Claude Code v2.1.88</span> Agent系统设计分析</p>
+      <p>仅供研究学习使用</p>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ==================== JavaScript ==================== -->
+<script>
+(function() {
+  'use strict';
+
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function() {
+      sidebar.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+      if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== toggle) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+
+  function initTocHighlight() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    var sections = [];
+    tocLinks.forEach(function(link) {
+      var id = link.getAttribute('href').replace('#', '');
+      var el = document.getElementById(id);
+      if (el) sections.push({ id: id, el: el, link: link });
+    });
+    function updateActive() {
+      var scrollY = window.scrollY + 120;
+      var current = null;
+      for (var i = sections.length - 1; i >= 0; i--) {
+        if (sections[i].el.offsetTop <= scrollY) { current = sections[i]; break; }
+      }
+      tocLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(function() { updateActive(); ticking = false; });
+        ticking = true;
+      }
+    });
+    updateActive();
+  }
+
+  function initScrollObserver() {
+    var sections = document.querySelectorAll('.fade-section');
+    if (!('IntersectionObserver' in window)) {
+      sections.forEach(function(s) { s.classList.add('visible'); });
+      return;
+    }
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  function initSidebarLinks() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    tocLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 1024 && sidebar) {
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    initScrollObserver();
+    initTocHighlight();
+    initSidebarLinks();
+  });
+})();
+</script>
+</body>
+</html>
