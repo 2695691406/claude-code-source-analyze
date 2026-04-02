@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>盒马技术部应用创新蓝图</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --border-color: #30363d;
+  --border-highlight: #58a6ff;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-purple: #bc8cff;
+  --accent-green: #7ee787;
+  --accent-orange: #f0883e;
+  --accent-pink: #f778ba;
+  --accent-cyan: #76e4f7;
+  --accent-yellow: #f5d547;
+  --accent-red: #ff7b72;
+  --gradient-primary: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  --gradient-green: linear-gradient(135deg, #7ee787 0%, #58a6ff 100%);
+  --gradient-warm: linear-gradient(135deg, #f0883e 0%, #f778ba 100%);
+  --gradient-cyan: linear-gradient(135deg, #76e4f7 0%, #58a6ff 100%);
+  --gradient-pink: linear-gradient(135deg, #f778ba 0%, #bc8cff 100%);
+  --glow-blue: 0 0 20px rgba(88, 166, 255, 0.3);
+  --glow-purple: 0 0 20px rgba(188, 140, 255, 0.3);
+  --glow-green: 0 0 20px rgba(126, 231, 135, 0.3);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+  background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; overflow-x: hidden;
+}
+a { color: var(--accent-blue); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-purple); }
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  background: var(--bg-tertiary); padding: 2px 7px; border-radius: 4px; font-size: 0.88em; color: var(--accent-cyan);
+}
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+.particle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+.particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--accent-blue); opacity: 0; animation: particleFloat linear infinite; }
+@keyframes particleFloat {
+  0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1)  { left: 5%;  animation-duration: 14s; animation-delay: 0s;   background: var(--accent-blue); }
+.particle:nth-child(2)  { left: 15%; animation-duration: 18s; animation-delay: 2s;   background: var(--accent-purple); }
+.particle:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 4s;   background: var(--accent-green); }
+.particle:nth-child(4)  { left: 35%; animation-duration: 16s; animation-delay: 1s;   background: var(--accent-blue); }
+.particle:nth-child(5)  { left: 45%; animation-duration: 20s; animation-delay: 3s;   background: var(--accent-cyan); }
+.particle:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 5s;   background: var(--accent-purple); }
+.particle:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 0.5s; background: var(--accent-pink); }
+.particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 2.5s; background: var(--accent-blue); }
+.particle:nth-child(9)  { left: 85%; animation-duration: 11s; animation-delay: 4.5s; background: var(--accent-green); }
+.particle:nth-child(10) { left: 92%; animation-duration: 19s; animation-delay: 1.5s; background: var(--accent-purple); }
+.particle:nth-child(11) { left: 50%; animation-duration: 22s; animation-delay: 6s;   background: var(--accent-cyan); width: 2px; height: 2px; }
+.particle:nth-child(12) { left: 10%; animation-duration: 25s; animation-delay: 7s;   background: var(--accent-pink); width: 4px; height: 4px; }
+
+.top-nav {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: rgba(13, 17, 23, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color); z-index: 100; padding: 12px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.top-nav .back-link {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500;
+  color: var(--accent-blue); padding: 6px 14px; background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2); border-radius: 20px; transition: all var(--transition);
+}
+.top-nav .back-link:hover { background: rgba(88,166,255,0.15); border-color: var(--accent-blue); box-shadow: var(--glow-blue); }
+.top-nav .back-link svg { width: 14px; height: 14px; }
+.top-nav .page-title { font-size: 0.9rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sidebar {
+  position: fixed; top: 56px; left: 0; width: var(--sidebar-width); height: calc(100vh - 56px);
+  background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+  overflow-y: auto; z-index: 50; padding: 24px 0; transform: translateX(0); transition: transform var(--transition);
+}
+.sidebar-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); padding: 0 20px; margin-bottom: 12px; }
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin: 0; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 10px; padding: 7px 20px; font-size: 0.82rem;
+  color: var(--text-secondary); border-left: 3px solid transparent; transition: all var(--transition);
+}
+.sidebar-nav a:hover { color: var(--text-primary); background: rgba(88,166,255,0.05); border-left-color: rgba(88,166,255,0.3); }
+.sidebar-nav a.active { color: var(--accent-blue); background: rgba(88,166,255,0.08); border-left-color: var(--accent-blue); font-weight: 600; }
+.sidebar-nav .toc-num {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--bg-tertiary); font-size: 0.65rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0;
+}
+.sidebar-nav a.active .toc-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.sidebar-toggle {
+  display: none; position: fixed; top: 62px; left: 12px; z-index: 60; width: 36px; height: 36px;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+  cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; align-items: center; justify-content: center;
+}
+
+.main-content { margin-left: var(--sidebar-width); margin-top: 56px; padding: 0; position: relative; z-index: 1; min-height: calc(100vh - 56px); }
+.container { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+.page-header { padding: 60px 0 40px; text-align: center; position: relative; overflow: hidden; }
+.page-header::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(88,166,255,0.06) 0%, transparent 60%);
+  animation: headerGlow 8s ease-in-out infinite alternate;
+}
+@keyframes headerGlow { 0% { transform: translate(-5%, -5%) scale(1); } 100% { transform: translate(5%, 5%) scale(1.1); } }
+.page-header .badge {
+  display: inline-block; padding: 5px 14px; background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.3); border-radius: 20px; font-size: 0.8rem;
+  color: var(--accent-blue); margin-bottom: 20px; letter-spacing: 1px;
+}
+.page-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+  background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; margin-bottom: 12px; line-height: 1.2;
+}
+.page-header .subtitle { font-size: 1rem; color: var(--text-secondary); max-width: 700px; margin: 0 auto; }
+.header-line { width: 60px; height: 3px; background: var(--gradient-primary); margin: 24px auto 0; border-radius: 2px; }
+
+.content-section { padding: 56px 0 20px; scroll-margin-top: 80px; }
+.section-title { margin-bottom: 36px; }
+.section-title h2 { font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.section-title h2 .sec-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: var(--radius-sm); font-size: 1.3rem; flex-shrink: 0;
+}
+.section-title p { color: var(--text-secondary); font-size: 0.95rem; margin-left: 52px; }
+
+.fade-section { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.fade-section.visible { opacity: 1; transform: translateY(0); }
+
+/* Matrix Table */
+.matrix-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-color); }
+.matrix-table thead th {
+  padding: 14px 16px; font-size: 0.85rem; font-weight: 700; color: var(--accent-blue);
+  background: var(--bg-secondary); border-bottom: 2px solid var(--border-color); text-align: left;
+}
+.matrix-table tbody tr { border-bottom: 1px solid rgba(48,54,61,0.5); transition: all var(--transition); }
+.matrix-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+.matrix-table tbody td { padding: 12px 16px; font-size: 0.88rem; color: var(--text-secondary); vertical-align: middle; }
+.matrix-table .cap-name { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+
+/* Capability Cards */
+.cap-card {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px; position: relative; overflow: hidden; transition: all var(--transition);
+}
+.cap-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 4px 0 0 4px; }
+.cap-card:hover { border-color: var(--border-highlight); transform: translateX(4px); }
+.cap-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.cap-num {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 800; flex-shrink: 0;
+}
+.cap-title { font-size: 1.15rem; font-weight: 700; }
+.cap-source {
+  margin-left: auto; font-size: 0.72rem; font-weight: 600; padding: 3px 12px; border-radius: 12px;
+  background: var(--bg-tertiary); color: var(--text-muted);
+}
+.cap-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.7; }
+.cap-arch {
+  background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 16px 20px; margin-bottom: 16px; overflow-x: auto;
+}
+.cap-arch pre { margin: 0; font-family: "SF Mono", "Fira Code", Consolas, monospace; font-size: 0.82rem; color: var(--accent-cyan); line-height: 1.6; white-space: pre; }
+.cap-decisions { list-style: none; margin-bottom: 16px; }
+.cap-decisions li {
+  display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 0.88rem; color: var(--text-secondary);
+  border-bottom: 1px solid rgba(48,54,61,0.3);
+}
+.cap-decisions li:last-child { border-bottom: none; }
+.cap-decisions .dec-icon { flex-shrink: 0; margin-top: 2px; color: var(--accent-green); }
+.cap-product {
+  background: var(--bg-secondary); border-left: 3px solid; border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 16px 20px; position: relative;
+}
+.cap-product-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
+.cap-product-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* Card color variants */
+.cap-blue::before { background: var(--accent-blue); }
+.cap-blue .cap-num { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.cap-blue:hover { box-shadow: 0 0 20px rgba(88,166,255,0.12); }
+.cap-blue .cap-product { border-left-color: var(--accent-blue); }
+.cap-purple::before { background: var(--accent-purple); }
+.cap-purple .cap-num { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+.cap-purple:hover { box-shadow: 0 0 20px rgba(188,140,255,0.12); }
+.cap-purple .cap-product { border-left-color: var(--accent-purple); }
+.cap-green::before { background: var(--accent-green); }
+.cap-green .cap-num { background: rgba(126,231,135,0.15); color: var(--accent-green); }
+.cap-green:hover { box-shadow: 0 0 20px rgba(126,231,135,0.12); }
+.cap-green .cap-product { border-left-color: var(--accent-green); }
+.cap-cyan::before { background: var(--accent-cyan); }
+.cap-cyan .cap-num { background: rgba(118,228,247,0.15); color: var(--accent-cyan); }
+.cap-cyan:hover { box-shadow: 0 0 20px rgba(118,228,247,0.12); }
+.cap-cyan .cap-product { border-left-color: var(--accent-cyan); }
+.cap-orange::before { background: var(--accent-orange); }
+.cap-orange .cap-num { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.cap-orange:hover { box-shadow: 0 0 20px rgba(240,136,62,0.12); }
+.cap-orange .cap-product { border-left-color: var(--accent-orange); }
+.cap-pink::before { background: var(--accent-pink); }
+.cap-pink .cap-num { background: rgba(247,120,186,0.15); color: var(--accent-pink); }
+.cap-pink:hover { box-shadow: 0 0 20px rgba(247,120,186,0.12); }
+.cap-pink .cap-product { border-left-color: var(--accent-pink); }
+.cap-yellow::before { background: var(--accent-yellow); }
+.cap-yellow .cap-num { background: rgba(245,213,71,0.15); color: var(--accent-yellow); }
+.cap-yellow:hover { box-shadow: 0 0 20px rgba(245,213,71,0.12); }
+.cap-yellow .cap-product { border-left-color: var(--accent-yellow); }
+.cap-red::before { background: var(--accent-red); }
+.cap-red .cap-num { background: rgba(255,123,114,0.15); color: var(--accent-red); }
+.cap-red:hover { box-shadow: 0 0 20px rgba(255,123,114,0.12); }
+.cap-red .cap-product { border-left-color: var(--accent-red); }
+
+/* Timeline */
+.timeline { position: relative; padding: 20px 0 40px; }
+.timeline-track { display: flex; justify-content: space-between; position: relative; margin-bottom: 0; }
+.timeline-track::before {
+  content: ''; position: absolute; top: 18px; left: 5%; right: 5%; height: 3px;
+  background: var(--gradient-primary); border-radius: 2px;
+}
+.timeline-phase { flex: 1; text-align: center; position: relative; padding: 0 8px; }
+.timeline-dot {
+  width: 38px; height: 38px; border-radius: 50%; margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 800; color: #fff; position: relative; z-index: 2;
+  border: 3px solid var(--bg-primary);
+}
+.timeline-card {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 16px; text-align: left; transition: all var(--transition);
+}
+.timeline-card:hover { border-color: var(--border-highlight); transform: translateY(-4px); }
+.timeline-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
+.timeline-card .tl-period { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; }
+.timeline-card ul { list-style: none; }
+.timeline-card li { font-size: 0.8rem; color: var(--text-secondary); padding: 3px 0; display: flex; align-items: flex-start; gap: 6px; }
+.timeline-card li::before { content: '▸'; color: var(--accent-cyan); flex-shrink: 0; }
+
+/* Stats Grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  padding: 20px; text-align: center; transition: all var(--transition);
+}
+.stat-card:hover { border-color: var(--border-highlight); transform: translateY(-2px); }
+.stat-value { font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+.stat-label { font-size: 0.82rem; color: var(--text-secondary); }
+.stat-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+/* Summary */
+.summary-box {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+  padding: 28px; margin-bottom: 24px;
+}
+.summary-text { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 20px; }
+.top3-list { list-style: none; }
+.top3-list li {
+  display: flex; align-items: center; gap: 14px; padding: 14px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4); font-size: 0.95rem;
+}
+.top3-list li:last-child { border-bottom: none; }
+.top3-num {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 800; flex-shrink: 0; background: rgba(88,166,255,0.15); color: var(--accent-blue);
+}
+.top3-name { font-weight: 700; color: var(--text-primary); }
+.top3-desc { color: var(--text-secondary); font-size: 0.88rem; }
+
+.footer { padding: 48px 0; text-align: center; border-top: 1px solid var(--border-color); margin-top: 40px; }
+.footer p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px; }
+.footer .footer-brand { font-weight: 600; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar-toggle { display: flex; }
+  .main-content { margin-left: 0; }
+}
+@media (max-width: 768px) {
+  .page-header { padding: 40px 0 24px; }
+  .content-section { padding: 40px 0 12px; }
+  .container { padding: 0 16px; }
+  .matrix-table { font-size: 0.8rem; }
+  .cap-card-head { flex-wrap: wrap; }
+  .cap-source { margin-left: 0; }
+  .timeline-track { flex-direction: column; gap: 16px; }
+  .timeline-track::before { display: none; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .top-nav .page-title { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="particle-bg" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
+<nav class="top-nav">
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m0 0l4-4m-4 4l4 4"/></svg>
+    返回目录
+  </a>
+  <span class="page-title">盒马技术部应用创新蓝图 — 基于 Claude Code 源码深度分析</span>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">目录导航</div>
+  <ul class="sidebar-nav" id="tocNav">
+    <li><a href="#sec-overview"><span class="toc-num">总</span>战略总览</a></li>
+    <li><a href="#p1"><span class="toc-num">1</span>盒小蜜Pro (客服)</a></li>
+    <li><a href="#p2"><span class="toc-num">2</span>盒掌柜AI (运营)</a></li>
+    <li><a href="#p3"><span class="toc-num">3</span>盒调度 (门店)</a></li>
+    <li><a href="#p4"><span class="toc-num">4</span>盒链AI (供应链)</a></li>
+    <li><a href="#p5"><span class="toc-num">5</span>盒聊 (消费者)</a></li>
+    <li><a href="#p6"><span class="toc-num">6</span>盒码 (编码助手)</a></li>
+    <li><a href="#p7"><span class="toc-num">7</span>盒审 (代码审查)</a></li>
+    <li><a href="#p8"><span class="toc-num">8</span>盒测 (自动测试)</a></li>
+    <li><a href="#p9"><span class="toc-num">9</span>盒维 (智能运维)</a></li>
+    <li><a href="#p10"><span class="toc-num">10</span>盒析 (数据分析)</a></li>
+    <li><a href="#p11"><span class="toc-num">11</span>盒Agent (基础设施)</a></li>
+    <li><a href="#p12"><span class="toc-num">12</span>盒权 (工具权限)</a></li>
+    <li><a href="#p13"><span class="toc-num">13</span>盒观 (成本管控)</a></li>
+    <li><a href="#p14"><span class="toc-num">14</span>盒接 (MCP适配)</a></li>
+    <li><a href="#p15"><span class="toc-num">15</span>盒控 (Feature Gate)</a></li>
+    <li><a href="#sec-tools"><span class="toc-num">工</span>提效工具链</a></li>
+    <li><a href="#sec-roadmap"><span class="toc-num">路</span>实施路线图</a></li>
+    <li><a href="#sec-value"><span class="toc-num">值</span>预期价值</a></li>
+    <li><a href="#sec-summary"><span class="toc-num">结</span>总结</a></li>
+  </ul>
+</aside>
+
+<main class="main-content">
+
+  <header class="page-header">
+    <div class="container">
+      <div class="badge">HEMA INNOVATION BLUEPRINT</div>
+      <h1>🏪 盒马技术部应用创新蓝图</h1>
+      <p class="subtitle">基于 Claude Code 源码设计的深度分析，为盒马技术部规划全方位的 AI 应用产品创新、平台实践与提效建设方案</p>
+      <div class="header-line"></div>
+    </div>
+  </header>
+
+  <!-- ========== 战略总览 ========== -->
+  <section class="content-section fade-section" id="sec-overview">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🗺️</span>战略总览：从源码设计到盒马价值</h2>
+        <p>从前台产品创新、后台应用建设、平台基础设施、提效工具链四个维度，全面规划 AI 应用创新蓝图</p>
+      </div>
+      <div style="overflow-x:auto;">
+      <table class="matrix-table">
+        <thead><tr><th>Claude Code 核心能力</th><th>→</th><th>盒马应用方向</th></tr></thead>
+        <tbody>
+          <tr><td class="cap-name">AsyncGenerator 流式管道</td><td>→</td><td>实时客服 / 直播 / 运营交互</td></tr>
+          <tr><td class="cap-name">四层权限控制系统</td><td>→</td><td>Agent 安全治理平台</td></tr>
+          <tr><td class="cap-name">五层上下文压缩管道</td><td>→</td><td>长对话 AI 应用优化</td></tr>
+          <tr><td class="cap-name">推测性执行引擎</td><td>→</td><td>智能预加载 / 预测系统</td></tr>
+          <tr><td class="cap-name">多 Agent 协调框架</td><td>→</td><td>复杂业务流自动化</td></tr>
+          <tr><td class="cap-name">MCP 协议集成层</td><td>→</td><td>内部系统标准化接入</td></tr>
+          <tr><td class="cap-name">Dream 记忆巩固系统</td><td>→</td><td>AI 知识积累与团队共享</td></tr>
+          <tr><td class="cap-name">React+Ink 终端 UI</td><td>→</td><td>开发者工具与运维面板</td></tr>
+          <tr><td class="cap-name">Feature Gate 编译系统</td><td>→</td><td>多版本 / 多市场产品管理</td></tr>
+          <tr><td class="cap-name">Bridge 远程控制</td><td>→</td><td>云端-门店协同 Agent</td></tr>
+          <tr><td class="cap-name">Token 成本追踪</td><td>→</td><td>AI 资源精细化管理</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 前台产品创新 ========== -->
+  <!-- 产品 1：盒小蜜Pro -->
+  <section class="content-section fade-section" id="p1">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🛒</span>前台产品创新（面向用户/商家）</h2>
+        <p>5 款面向终端用户和商家的 AI 创新产品</p>
+      </div>
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <span class="cap-num">1</span>
+          <span class="cap-title">🤖 盒小蜜Pro — 智能客服 Agent 平台</span>
+          <span class="cap-source">多Agent协调 + 权限控制 + 上下文压缩 + MCP</span>
+        </div>
+        <p class="cap-desc">多 Agent 协作的智能客服平台，路由 Agent 分发意图，专业 Agent 处理业务，实现端到端自动化客服体验。</p>
+        <div class="cap-arch"><pre>用户咨询
+  ↓
+路由 Agent（分析意图）
+  ├── 售前 Agent → 商品推荐、优惠查询
+  │   └── MCP 接入：商品库、优惠系统、库存系统
+  ├── 售后 Agent → 退换货、投诉处理
+  │   └── MCP 接入：订单系统、物流系统、工单系统
+  ├── 配送 Agent → 配送状态、时效查询
+  │   └── MCP 接入：配送系统、骑手调度、地图服务
+  └── 商家 Agent → 商品管理、数据分析
+      └── MCP 接入：商品后台、数据平台、供应链</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>多 Agent 协作</strong>（Coordinator 模式）：路由 Agent 分发，专业 Agent 处理，反偷懒守卫确保综合回答</li>
+          <li><span class="dec-icon">✦</span><strong>权限分级</strong>（四层权限）：查询自动执行，修改需用户确认，敏感操作需管理员审批</li>
+          <li><span class="dec-icon">✦</span><strong>长对话记忆</strong>（五层压缩）：用户历史问题自动压缩保留，同一问题不重复询问</li>
+          <li><span class="dec-icon">✦</span><strong>团队记忆</strong>（Dream 系统）：自动积累常见问题解决方案，团队共享</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">客服效率提升 50%+ · 用户满意度提升 20%+ · 人工介入率降低 40%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 2：盒掌柜AI -->
+  <section class="content-section fade-section" id="p2">
+    <div class="container">
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <span class="cap-num">2</span>
+          <span class="cap-title">📦 盒掌柜AI — 商品智能运营助手</span>
+          <span class="cap-source">Skill 扩展体系 + 记忆巩固 + 工具抽象</span>
+        </div>
+        <p class="cap-desc">为商家提供 AI 驱动的运营全链路助手，通过 Skill 市场实现零代码运营动作编排。</p>
+        <div class="cap-arch"><pre># 核心 Skills（零代码定义）
+商品智能上架：
+  tools: [商品创建, 图片优化, 标题生成, 类目推荐, 价格建议]
+
+智能促销：
+  tools: [数据分析, 人群圈选, 优惠计算, 活动创建, 效果预估]
+
+智能补货：
+  tools: [销量预测, 库存查询, 补货计算, 采购单生成]</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>Skill 市场</strong>：运营动作封装为可复用 Skill，商家可自由组合</li>
+          <li><span class="dec-icon">✦</span><strong>运营记忆</strong>：AI 自动记住每个商家的运营偏好和历史策略效果</li>
+          <li><span class="dec-icon">✦</span><strong>工具编排</strong>：统一接入商品、订单、营销、供应链等后台系统</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">商品上架效率提升 3x · 促销 ROI 提升 15%+ · 商家运营人力节省 30%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 3：盒调度 -->
+  <section class="content-section fade-section" id="p3">
+    <div class="container">
+      <div class="cap-card cap-green">
+        <div class="cap-card-head">
+          <span class="cap-num">3</span>
+          <span class="cap-title">🏬 盒调度 — 门店智能调度助手</span>
+          <span class="cap-source">推测性执行 + 流式交互 + 多Agent协调</span>
+        </div>
+        <p class="cap-desc">基于推测性执行和多 Agent 并行决策的门店智能调度平台，提前预测高峰并准备调度方案。</p>
+        <div class="cap-arch"><pre>门店运营数据实时流入
+  ↓
+调度 Coordinator Agent
+  ├── 客流预测 Agent → 未来 2 小时客流推测
+  │   └── 推测性执行：提前准备人力调配方案
+  ├── 鲜度管理 Agent → 生鲜保质期监控
+  │   └── 实时流式告警：即将过期商品处理建议
+  ├── 拣货优化 Agent → 订单拣货路径规划
+  │   └── 多工具协调：订单聚合 + 路径计算 + 人员匹配
+  └── 配送调度 Agent → 骑手调度与路径优化
+      └── 实时状态更新：订单-骑手-用户三方同步</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>推测性执行</strong>：在客流高峰到来前预测并准备调度方案</li>
+          <li><span class="dec-icon">✦</span><strong>实时流式反馈</strong>：调度决策全程可视化，实时流式输出</li>
+          <li><span class="dec-icon">✦</span><strong>多 Agent 并行决策</strong>：多个专业 Agent 并行分析，Coordinator 综合决策</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">门店人效提升 20%+ · 损耗率降低 15%+ · 配送准时率提升 10%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 4：盒链AI -->
+  <section class="content-section fade-section" id="p4">
+    <div class="container">
+      <div class="cap-card cap-cyan">
+        <div class="cap-card-head">
+          <span class="cap-num">4</span>
+          <span class="cap-title">🔗 盒链AI — 供应链智能问答系统</span>
+          <span class="cap-source">MCP 协议集成 + 上下文管理 + 工具编排</span>
+        </div>
+        <p class="cap-desc">通过 MCP 协议标准化接入盒马供应链各环节系统，构建统一的智能问答接口。</p>
+        <div class="cap-arch"><pre>用户：上周大闸蟹的到货合格率怎么样？
+AI：正在为您查询...
+  [调用质检 MCP → 获取大闸蟹质检数据]
+  [调用数据 MCP → 获取上月对比数据]
+  [上下文压缩 → 保留关键数据]
+
+上周大闸蟹到货合格率 94.2%，较上月提升 2.4 个百分点。
+主要改善来自供应商A批次合格率从 89% 提升至 96%...</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span>MCP Server 矩阵：采购 / 库存 / 物流 / 质检 / 数据 / 合同 六大模块</li>
+          <li><span class="dec-icon">✦</span>跨系统数据融合：自然语言查询贯穿供应链全链路</li>
+          <li><span class="dec-icon">✦</span>上下文连续性：多轮追问保持分析连贯</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">供应链数据查询效率提升 5x · 问题定位从小时级降至分钟级 · 跨部门信息壁垒消除 80%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 5：盒聊 -->
+  <section class="content-section fade-section" id="p5">
+    <div class="container">
+      <div class="cap-card cap-orange">
+        <div class="cap-card-head">
+          <span class="cap-num">5</span>
+          <span class="cap-title">💬 盒聊 — 消费者互动 AI 平台</span>
+          <span class="cap-source">Voice 服务 + 流式交互 + Agent 定义系统</span>
+        </div>
+        <p class="cap-desc">在盒马 APP 内提供基于 AI 的互动体验，覆盖美食推荐、食谱指导、营养分析、逛店导航等场景。</p>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>美食推荐 Agent</strong>：根据口味偏好、饮食限制、当季食材推荐菜品</li>
+          <li><span class="dec-icon">✦</span><strong>食谱助手 Agent</strong>：实时语音指导烹饪步骤（参考 Voice 服务）</li>
+          <li><span class="dec-icon">✦</span><strong>营养顾问 Agent</strong>：分析购物车/历史订单的营养均衡度</li>
+          <li><span class="dec-icon">✦</span><strong>逛店导航 Agent</strong>：虚拟导购，推荐当日特价和新品</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">用户活跃度提升 25%+ · 客单价提升 10%+ · 用户留存率提升 15%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 后台应用创新 ========== -->
+  <!-- 产品 6：盒码 -->
+  <section class="content-section fade-section" id="p6">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">⚙️</span>后台应用创新（面向技术团队）</h2>
+        <p>5 款面向研发与运维团队的 AI 生产力工具</p>
+      </div>
+      <div class="cap-card cap-green">
+        <div class="cap-card-head">
+          <span class="cap-num">6</span>
+          <span class="cap-title">💻 盒码 — AI 编码助手</span>
+          <span class="cap-source">完整 Claude Code 架构精髓</span>
+        </div>
+        <p class="cap-desc">为盒马研发团队量身定制的 AI 编码助手，深度集成盒马 DevOps 工具链。</p>
+        <div class="cap-arch"><pre>核心架构（参考 Claude Code）：
+├── QueryEngine → 流式对话引擎
+├── 工具系统
+│   ├── 文件操作（Read/Write/Edit）
+│   ├── 代码搜索（Grep/Glob）
+│   ├── Shell 执行（Bash）→ 接入盒马 DevOps
+│   ├── LSP 集成 → Java/TypeScript/Go/Python
+│   └── 盒马专属工具
+│       ├── AONE 集成 → 需求管理/代码审查
+│       ├── 应用发布 → 盒马发布流程
+│       ├── 监控查询 → SLS/Prometheus/Grafana
+│       └── 配置管理 → Diamond/Switch
+├── 权限系统 → 生产环境保护
+├── 记忆系统 → 盒马代码规范/架构模式（HEMA.md）
+└── MCP 扩展 → 内部系统标准化接入</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>CLAUDE.md → HEMA.md</strong>：项目级 AI 记忆文件，存储盒马特有的编码规范、架构约定</li>
+          <li><span class="dec-icon">✦</span><strong>盒马 Skill 库</strong>：常用开发操作封装（创建服务、添加 API、数据库迁移等）</li>
+          <li><span class="dec-icon">✦</span><strong>安全审查</strong>：代码提交前自动安全扫描（参考 Bash 分类器模式）</li>
+          <li><span class="dec-icon">✦</span><strong>发布流程集成</strong>：AI 辅助代码审查 → 自动合并 → 触发部署</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">开发效率提升 40%+ · 代码审查时间降低 60%+ · 线上 Bug 率降低 30%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 7：盒审 -->
+  <section class="content-section fade-section" id="p7">
+    <div class="container">
+      <div class="cap-card cap-cyan">
+        <div class="cap-card-head">
+          <span class="cap-num">7</span>
+          <span class="cap-title">🔍 盒审 — 智能代码审查平台</span>
+          <span class="cap-source">多Agent协作 + LSP集成 + UltraReview</span>
+        </div>
+        <p class="cap-desc">多维度自动化代码审查平台，5 个专业 Agent 并行审查每次代码提交。</p>
+        <div class="cap-arch"><pre>代码提交 (MR/PR)
+  ↓
+审查 Coordinator Agent
+  ├── 架构审查 Agent → 架构合理性、模式一致性
+  │   └── 工具：LSP 定义跳转 + 代码搜索 + 架构 CLAUDE.md
+  ├── 安全审查 Agent → 漏洞检测、敏感信息
+  │   └── 工具：安全规则库 + Bash 分类器模式
+  ├── 性能审查 Agent → 性能问题、资源泄漏
+  │   └── 工具：性能模式库 + 监控数据查询
+  ├── 业务审查 Agent → 业务逻辑正确性
+  │   └── 工具：需求文档 + 测试用例
+  └── 规范审查 Agent → 编码规范、命名一致性
+      └── 工具：Lint 规则 + 团队记忆</pre></div>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">审查覆盖率 100%（每次提交） · 高危问题发现率提升 70%+ · 审查周期从天级降至小时级</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 8：盒测 -->
+  <section class="content-section fade-section" id="p8">
+    <div class="container">
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <span class="cap-num">8</span>
+          <span class="cap-title">🧪 盒测 — 自动化测试 Agent</span>
+          <span class="cap-source">推测性执行 + 记忆系统 + 工具编排</span>
+        </div>
+        <p class="cap-desc">智能化测试全流程，从变更影响分析到测试生成、执行和结果分析的一体化平台。</p>
+        <div class="cap-arch"><pre>代码变更 → 影响分析 Agent
+  ├── 推测性执行：预测需要运行的测试范围
+  ├── 测试生成 Agent：自动补全缺失测试
+  ├── 测试执行 Agent：并行运行测试套件
+  └── 结果分析 Agent：失败原因分析 + 修复建议
+      └── 记忆系统：积累常见失败模式和修复方案</pre></div>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">测试覆盖率提升 30%+ · 回归测试时间降低 50%+ · Bug 定位时间降低 60%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 9：盒维 -->
+  <section class="content-section fade-section" id="p9">
+    <div class="container">
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <span class="cap-num">9</span>
+          <span class="cap-title">🛡️ 盒维 — 智能运维 Agent</span>
+          <span class="cap-source">Bash分类器 + 权限控制 + 多Agent + Bridge远程</span>
+        </div>
+        <p class="cap-desc">从告警到诊断、根因分析、修复和预防的全链路智能运维平台，四层权限保障操作安全。</p>
+        <div class="cap-arch"><pre>告警 → 运维 Coordinator Agent
+  ├── 诊断 Agent → 日志分析、指标关联
+  │   └── MCP 接入：SLS、Prometheus、Trace 系统
+  ├── 根因 Agent → 变更关联、依赖分析
+  │   └── MCP 接入：发布系统、配置中心、依赖图谱
+  ├── 修复 Agent → 生成修复方案
+  │   ├── 权限控制：只读操作自动执行
+  │   ├── 权限控制：修复操作需 SRE 审批
+  │   └── Bash 分类器：危险命令强制拦截
+  └── 预防 Agent → 生成复盘报告 + 改进建议
+      └── Dream 记忆：积累故障模式和修复经验</pre></div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>工具池限制</strong>：运维 Agent 只能使用已审批的工具</li>
+          <li><span class="dec-icon">✦</span><strong>操作分级</strong>：查询（自动）→ 修复（审批）→ 重启（双人确认）</li>
+          <li><span class="dec-icon">✦</span><strong>命令审查</strong>：所有 Shell 命令经过安全分类器</li>
+          <li><span class="dec-icon">✦</span><strong>审计追踪</strong>：所有操作全程可追溯</li>
+        </ul>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">MTTR 降低 50%+ · 误操作率降低 90%+ · 运维人效提升 3x</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 产品 10：盒析 -->
+  <section class="content-section fade-section" id="p10">
+    <div class="container">
+      <div class="cap-card cap-pink">
+        <div class="cap-card-head">
+          <span class="cap-num">10</span>
+          <span class="cap-title">📊 盒析 — 数据分析 Agent</span>
+          <span class="cap-source">流式查询引擎 + 上下文管理 + 工具编排</span>
+        </div>
+        <p class="cap-desc">自然语言驱动的数据分析平台，从查询构建到可视化和洞察提取的端到端智能分析。</p>
+        <div class="cap-arch"><pre>业务分析需求（自然语言）
+  ↓
+查询构建 Agent
+  ├── SQL 生成 → 基于业务元数据
+  ├── 执行查询 → 流式返回结果
+  ├── 可视化 → 自动选择图表类型
+  └── 洞察提取 → AI 分析数据趋势
+      └── 上下文管理：保持分析连续性
+          └── 五层压缩：历史分析结果智能压缩</pre></div>
+        <div class="cap-product">
+          <div class="cap-product-title">📊 预期价值</div>
+          <div class="cap-product-desc">数据分析周期从天级降至分钟级 · 非技术人员自助分析覆盖 80%+ 场景 · 数据洞察质量提升 40%+</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 平台基础设施 ========== -->
+  <!-- 平台 1：盒Agent -->
+  <section class="content-section fade-section" id="p11">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(240,136,62,0.12);color:var(--accent-orange);">🏗️</span>平台基础设施建设</h2>
+        <p>5 个支撑全局的 AI 基础设施平台</p>
+      </div>
+      <div class="cap-card cap-orange">
+        <div class="cap-card-head">
+          <span class="cap-num">11</span>
+          <span class="cap-title">🤖 盒Agent — 企业级 Agent 基础设施平台</span>
+          <span class="cap-source">QueryEngine + 工具抽象 + 权限系统 + MCP</span>
+        </div>
+        <p class="cap-desc">声明式定义 Agent，一键部署。通过 MCP 协议标准化接入 100+ 内部系统。</p>
+        <div class="cap-arch"><pre>盒 Agent 平台
+├── Agent 运行时
+│   ├── QueryEngine（流式查询引擎）
+│   ├── Tool Runtime（工具执行运行时）
+│   ├── Permission Engine（权限引擎）
+│   └── Context Manager（上下文管理器）
+├── Agent 管理
+│   ├── Agent 定义（YAML 声明式）
+│   ├── Agent 编排（Coordinator 模式）
+│   ├── Agent 监控（成本、性能、安全）
+│   └── Agent 市场（共享 &amp; 复用）
+├── 工具生态
+│   ├── 内置工具（文件、搜索、Shell）
+│   ├── MCP 连接器（标准化内部系统接入）
+│   ├── Skill 库（零代码工具组合）
+│   └── Plugin 市场（深度集成扩展）
+└── 安全治理
+    ├── 四层权限控制
+    ├── 操作审计
+    ├── 成本管控
+    └── 合规检查</pre></div>
+        <div class="cap-product">
+          <div class="cap-product-title">🎯 核心能力</div>
+          <div class="cap-product-desc">Agent as a Service · 统一工具接入（MCP 协议） · 安全管控（四层权限 + 审计 + 成本预算） · 知识积累（Dream 机制）</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 平台 2：盒权 -->
+  <section class="content-section fade-section" id="p12">
+    <div class="container">
+      <div class="cap-card cap-yellow">
+        <div class="cap-card-head">
+          <span class="cap-num">12</span>
+          <span class="cap-title">🔐 盒权 — 统一工具编排与权限管理平台</span>
+          <span class="cap-source">四层权限系统 + 工具抽象 + 规则引擎</span>
+        </div>
+        <p class="cap-desc">五层权限策略管理，从组织全局到会话级别的精细化访问控制。</p>
+        <div class="cap-arch"><pre>权限策略管理
+├── 组织策略（Policy）→ 最高优先级，全局约束
+│   └── 例：生产数据库只读、敏感 API 需审批
+├── 团队规则（Team）→ 团队级权限模板
+│   └── 例：测试团队可执行测试命令、开发可修改代码
+├── 项目规则（Project）→ 项目级权限配置
+│   └── 例：核心服务修改需 Tech Lead 审批
+├── 个人规则（Personal）→ 个人定制
+│   └── 例：资深工程师自动批准常规操作
+└── 会话规则（Session）→ 一次性授权
+    └── 例：临时赋予部署权限，会话结束后撤销</pre></div>
+        <div class="cap-product">
+          <div class="cap-product-title">🎯 适用范围</div>
+          <div class="cap-product-desc">AI Agent 操作权限管理 · 内部工具平台操作控制 · DevOps 流水线权限治理 · 数据访问权限管理</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 平台 3：盒观 -->
+  <section class="content-section fade-section" id="p13">
+    <div class="container">
+      <div class="cap-card cap-red">
+        <div class="cap-card-head">
+          <span class="cap-num">13</span>
+          <span class="cap-title">📈 盒观 — AI 成本管控与观测平台</span>
+          <span class="cap-source">Token 估算 + 成本追踪 + Analytics 服务</span>
+        </div>
+        <p class="cap-desc">实时监控 AI 使用量与成本，精确到团队/项目/Agent 的成本分摊与预算管理。</p>
+        <div class="cap-arch"><pre>AI 成本管控平台
+├── 实时监控
+│   ├── Token 使用量实时追踪（三阶段精确计量）
+│   ├── 多模型/多供应商使用量分析
+│   ├── 成本分摊到团队/项目/Agent
+│   └── 异常使用实时告警
+├── 预算管理
+│   ├── 团队级/项目级/Agent级 预算控制
+│   └── 超预算自动降级策略
+├── 优化建议
+│   ├── 缓存命中率 + 上下文压缩效果评估
+│   └── 模型选择优化 + Prompt 优化建议
+└── 报表输出
+    └── 日/周/月使用报告 + 成本趋势 + ROI 评估</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 平台 4：盒接 -->
+  <section class="content-section fade-section" id="p14">
+    <div class="container">
+      <div class="cap-card cap-blue">
+        <div class="cap-card-head">
+          <span class="cap-num">14</span>
+          <span class="cap-title">🔌 盒接 — MCP 协议企业适配层</span>
+          <span class="cap-source">MCP 协议集成（30+ 文件）</span>
+        </div>
+        <p class="cap-desc">为盒马内部系统提供统一的 MCP Server 开发框架和管理平台，替代传统 API 集成方式。</p>
+        <div class="cap-arch"><pre>盒接平台
+├── MCP Server SDK
+│   ├── Java SDK（Spring Boot Starter）
+│   ├── Node.js SDK（Express/Koa 中间件）
+│   ├── Python SDK（FastAPI 插件）
+│   └── Go SDK
+├── MCP Server 管理
+│   ├── 注册中心（服务发现）· 配置管理 · 健康检查 · 版本管理
+├── MCP Server 市场
+│   ├── 官方 Server（订单、商品、库存等）
+│   ├── 团队 Server（各团队自建）· 文档中心
+└── 安全网关
+    ├── OAuth 2.0 认证（PKCE 流程）
+    ├── 请求鉴权 · 速率限制 · 数据脱敏</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 平台 5：盒控 -->
+  <section class="content-section fade-section" id="p15">
+    <div class="container">
+      <div class="cap-card cap-purple">
+        <div class="cap-card-head">
+          <span class="cap-num">15</span>
+          <span class="cap-title">🎛️ 盒控 — Feature Gate 产品线管理平台</span>
+          <span class="cap-source">Bun Feature Gate 编译系统</span>
+        </div>
+        <p class="cap-desc">编译时与运行时结合的功能门控平台，支撑多产品线并行管理与 A/B 测试。</p>
+        <div class="cap-arch"><pre>盒控平台
+├── Feature Gate 定义
+│   ├── 编译时 Gate（代码消除，零运行时开销）
+│   ├── 运行时 Gate（动态切换，灰度发布）
+│   └── 混合 Gate（编译时基线 + 运行时微调）
+├── 产品线管理
+│   ├── 盒马鲜生（标准版） · 盒马 X 会员店（增值版）
+│   ├── 盒马邻里（简化版） · 国际版（本地化）
+├── A/B 测试
+│   └── GrowthBook 集成 · 实验设计 · 效果分析
+└── 构建管理
+    └── 多版本并行构建 · 产物比对 · 发布管理</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 提效工具链 ========== -->
+  <section class="content-section fade-section" id="sec-tools">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(118,228,247,0.12);color:var(--accent-cyan);">🔧</span>提效工具链建设</h2>
+        <p>4 个贯穿研发全流程的效率工具</p>
+      </div>
+
+      <div class="cap-card cap-cyan">
+        <div class="cap-card-head">
+          <span class="cap-num">T1</span>
+          <span class="cap-title">📝 AI 代码生成规范引擎</span>
+          <span class="cap-source">CLAUDE.md 记忆机制 + Skill 定义</span>
+        </div>
+        <p class="cap-desc">为每个盒马项目维护 <code>HEMA.md</code> 文件，AI 编码时自动加载项目规范和架构约定。</p>
+        <div class="cap-arch"><pre># HEMA.md - 盒马交易系统
+
+## 编码规范
+- 使用 Java 17 + Spring Boot 3.x
+- 数据库操作使用 MyBatis-Plus
+- API 统一返回 Result&lt;T&gt; 包装
+- 异常使用自定义 BizException
+
+## 架构约定
+- Controller → Service → Manager → DAO 分层
+- 领域事件使用 Spring Event
+- 缓存策略：本地缓存 → Redis → DB
+
+## 安全要求
+- 敏感数据必须脱敏
+- SQL 操作必须防注入
+- API 接口必须做权限校验</pre></div>
+      </div>
+
+      <div class="cap-card cap-green">
+        <div class="cap-card-head">
+          <span class="cap-num">T2</span>
+          <span class="cap-title">🎯 智能 Prompt 工程平台</span>
+          <span class="cap-source">系统 Prompt 组装 + 上下文管理</span>
+        </div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>Prompt 模板库</strong>：盒马业务场景的 Prompt 模板</li>
+          <li><span class="dec-icon">✦</span><strong>上下文自动注入</strong>：根据任务类型自动组装系统 Prompt</li>
+          <li><span class="dec-icon">✦</span><strong>Prompt 版本管理</strong>：Prompt 变更追踪与效果评估</li>
+          <li><span class="dec-icon">✦</span><strong>Token 预算管理</strong>：智能控制 Prompt 长度</li>
+        </ul>
+      </div>
+
+      <div class="cap-card cap-pink">
+        <div class="cap-card-head">
+          <span class="cap-num">T3</span>
+          <span class="cap-title">📚 AI 辅助文档系统</span>
+          <span class="cap-source">记忆巩固 + 多Agent协作</span>
+        </div>
+        <ul class="cap-decisions">
+          <li><span class="dec-icon">✦</span><strong>API 文档自动生成</strong>：AI 分析代码自动生成 API 文档</li>
+          <li><span class="dec-icon">✦</span><strong>架构文档维护</strong>：代码变更时自动更新架构文档</li>
+          <li><span class="dec-icon">✦</span><strong>知识库管理</strong>：团队知识自动沉淀与更新（Dream 模式）</li>
+          <li><span class="dec-icon">✦</span><strong>新人引导</strong>：AI 驱动的项目入门教程</li>
+        </ul>
+      </div>
+
+      <div class="cap-card cap-yellow">
+        <div class="cap-card-head">
+          <span class="cap-num">T4</span>
+          <span class="cap-title">📊 端到端研发效能仪表盘</span>
+          <span class="cap-source">Analytics 服务 + 成本追踪 + Feature Gate</span>
+        </div>
+        <div class="cap-arch"><pre>研发效能仪表盘
+├── AI 使用量看板（Token、成本、Agent 调用）
+├── 代码质量看板（AI 审查结果、缺陷趋势）
+├── 发布效率看板（从需求到上线的端到端度量）
+├── 团队协作看板（AI 辅助的协作效率）
+└── 成本优化看板（AI 成本 ROI、优化建议）</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 实施路线图 ========== -->
+  <section class="content-section fade-section" id="sec-roadmap">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">🗓️</span>实施路线图</h2>
+        <p>12 个月四阶段推进：基础设施 → 内部工具 → 业务应用 → 生态完善</p>
+      </div>
+      <div class="timeline">
+        <div class="timeline-track">
+          <div class="timeline-phase">
+            <div class="timeline-dot" style="background:var(--gradient-primary);">P1</div>
+            <div class="timeline-card">
+              <h4 style="color:var(--accent-blue);">第一阶段：基础设施</h4>
+              <div class="tl-period">Month 1 – 3</div>
+              <ul>
+                <li>Agent 基础设施平台 MVP</li>
+                <li>QueryEngine 核心引擎</li>
+                <li>MCP 协议适配层</li>
+                <li>四层权限引擎 + 审计</li>
+                <li>Token 计量与预算管理</li>
+              </ul>
+            </div>
+          </div>
+          <div class="timeline-phase">
+            <div class="timeline-dot" style="background:var(--gradient-green);">P2</div>
+            <div class="timeline-card">
+              <h4 style="color:var(--accent-green);">第二阶段：内部工具</h4>
+              <div class="tl-period">Month 4 – 6</div>
+              <ul>
+                <li>AI 编码助手「盒码」</li>
+                <li>智能运维 Agent「盒维」</li>
+                <li>代码审查平台「盒审」</li>
+                <li>盒马代码规范集成</li>
+                <li>AONE 工作流集成</li>
+              </ul>
+            </div>
+          </div>
+          <div class="timeline-phase">
+            <div class="timeline-dot" style="background:var(--gradient-warm);">P3</div>
+            <div class="timeline-card">
+              <h4 style="color:var(--accent-orange);">第三阶段：业务应用</h4>
+              <div class="tl-period">Month 7 – 9</div>
+              <ul>
+                <li>智能客服「盒小蜜Pro」</li>
+                <li>商品运营「盒掌柜AI」</li>
+                <li>供应链问答「盒链AI」</li>
+                <li>全链路 MCP 接入</li>
+                <li>Skill 市场上线</li>
+              </ul>
+            </div>
+          </div>
+          <div class="timeline-phase">
+            <div class="timeline-dot" style="background:var(--gradient-pink);">P4</div>
+            <div class="timeline-card">
+              <h4 style="color:var(--accent-pink);">第四阶段：生态完善</h4>
+              <div class="tl-period">Month 10 – 12</div>
+              <ul>
+                <li>Agent 模板 / Skill 共享市场</li>
+                <li>MCP Server 生态</li>
+                <li>推测性执行引擎</li>
+                <li>Dream 记忆巩固</li>
+                <li>ROI 评估与优化规划</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 预期总体价值 ========== -->
+  <section class="content-section fade-section" id="sec-value">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(126,231,135,0.12);color:var(--accent-green);">💎</span>预期总体价值</h2>
+        <p>横跨研发、运维、业务的全方位提升</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-green);">+40%</div>
+          <div class="stat-label">人均代码产出</div>
+          <div class="stat-sub">研发效率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-blue);">-30%</div>
+          <div class="stat-label">线上缺陷率</div>
+          <div class="stat-sub">代码质量</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-cyan);">-50%</div>
+          <div class="stat-label">平均故障恢复时间</div>
+          <div class="stat-sub">运维效率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-purple);">-40%</div>
+          <div class="stat-label">人工介入率</div>
+          <div class="stat-sub">客服效率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-orange);">3x</div>
+          <div class="stat-label">运营效率</div>
+          <div class="stat-sub">商家体验</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-yellow);">+35%</div>
+          <div class="stat-label">Token 使用效率</div>
+          <div class="stat-sub">AI 成本</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-pink);">80%+</div>
+          <div class="stat-label">AI 工具覆盖率</div>
+          <div class="stat-sub">团队能力</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 总结 ========== -->
+  <section class="content-section fade-section" id="sec-summary">
+    <div class="container">
+      <div class="section-title">
+        <h2><span class="sec-icon" style="background:rgba(88,166,255,0.12);color:var(--accent-blue);">🎯</span>总结</h2>
+      </div>
+      <div class="summary-box">
+        <p class="summary-text">通过深度借鉴 Claude Code 的源码设计，盒马技术部可以构建一个<strong>完整的 AI 应用技术栈</strong>：从底层的 Agent 基础设施，到中间的开发者工具链，再到上层的业务应用产品。这不仅是技术升级，更是盒马技术部从<strong>传统研发模式</strong>向 <strong>AI-Native 研发模式</strong>转型的战略路径。</p>
+        <ul class="top3-list">
+          <li>
+            <span class="top3-num">1</span>
+            <div><span class="top3-name">Platform First</span><br><span class="top3-desc">先建 Agent 基础设施平台，为所有上层应用提供统一能力</span></div>
+          </li>
+          <li>
+            <span class="top3-num">2</span>
+            <div><span class="top3-name">Inside Out</span><br><span class="top3-desc">从内部工具（编码/运维/审查）开始，积累经验后拓展到业务应用</span></div>
+          </li>
+          <li>
+            <span class="top3-num">3</span>
+            <div><span class="top3-name">Ecosystem Growth</span><br><span class="top3-desc">通过 MCP 协议、Skill 市场、Agent 市场构建可持续增长的生态</span></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p><span class="footer-brand">盒马技术部 AI 创新蓝图</span></p>
+      <p>基于 Claude Code v2.1.88 源码深度分析 · 全面规划 20 个创新方向</p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+(function() {
+  var sidebar = document.getElementById('sidebar');
+  var toggle = document.getElementById('sidebarToggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
+    document.addEventListener('click', function(e) {
+      if (window.innerWidth <= 1024 && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== toggle) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+
+  function initTocHighlight() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    var sections = [];
+    tocLinks.forEach(function(link) {
+      var id = link.getAttribute('href').replace('#', '');
+      var el = document.getElementById(id);
+      if (el) sections.push({ el: el, link: link });
+    });
+    function updateActive() {
+      var scrollY = window.scrollY + 120;
+      var current = null;
+      sections.forEach(function(s) { if (s.el.offsetTop <= scrollY) current = s; });
+      tocLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (current) current.link.classList.add('active');
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) { requestAnimationFrame(function() { updateActive(); ticking = false; }); ticking = true; }
+    });
+    updateActive();
+  }
+
+  function initScrollObserver() {
+    var sections = document.querySelectorAll('.fade-section');
+    if (!('IntersectionObserver' in window)) { sections.forEach(function(s) { s.classList.add('visible'); }); return; }
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  function initSidebarLinks() {
+    var tocLinks = document.querySelectorAll('#tocNav a');
+    tocLinks.forEach(function(link) {
+      link.addEventListener('click', function() { if (window.innerWidth <= 1024 && sidebar) sidebar.classList.remove('open'); });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() { initScrollObserver(); initTocHighlight(); initSidebarLinks(); });
+})();
+</script>
+</body>
+</html>
